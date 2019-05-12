@@ -1,0 +1,4 @@
+[submodule "canlib"]
+	path = canlib
+	url = https://github.com/waterloo-rocketry/canlib.git
+	branch = master
