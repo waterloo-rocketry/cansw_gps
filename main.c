@@ -50,21 +50,13 @@ int main(void) {
     //Enable reception by setting RXEN
     U1CON0 |= 16; //Bit4=RXEN,
     
-    
-    
-    
-    
-    //set port C3 as TX1
-    RC3PPS = 0b01 0011;
-    
+    //End of UART connection setup
 
     
-    
-    //Switches system clock source to the internal oscillator 
-    //OSCCON1 = 96; //Binary: 0110 0000 (HFq)
-    //Set frequency of Oscillator to 2Mhz
-    //OSCFRQ = 1;
+    //timer setup
     timer0_init();
+    
+    //GPS PINOUT setup
     
     //Set port  B1 as output pin (LED 3)
     TRISB3 = 0;
@@ -86,8 +78,11 @@ int main(void) {
     // Write a 1 to port B1 (LED 3)
     LATB3 = 1;
     
+    //end of GPS PINOUT setup
+    
     uint32_t last_millis = millis();
     
+    //Main Loop
     while(1)
     {
         /*if (millis() - last_millis > 1000) {
@@ -105,16 +100,17 @@ int main(void) {
 
 static void __interrupt() interrupt_handler() {
     if (PIR5) {
+        //Handle CAN 
         can_handle_interrupt();
     } else if (PIR3.U1RXIF) {
+        //Handle GPS Interrupt
         if (U1ERRIR) {
             //error
             LATB3 = 1;
         } else if (U1RXB) {
-            //data received
+            //data received. 
             LATB1 = 1;
         }
-        
     }
 
     // Timer0 has overflowed - update millis() function
