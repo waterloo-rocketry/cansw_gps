@@ -14,14 +14,10 @@
 
 #include "config.h"
 #include "timer.h"
-#include <stdio.h>
 
 #include <xc.h>
 
 #define _XTAL_FREQ 1000000
-
-static void can_msg_handler(can_msg_t *msg);
-static void send_status_ok(void);
 
 // Memory pool for CAN transmit buffer
 uint8_t tx_pool[100];
@@ -36,19 +32,18 @@ int main(void) {
     //set up UART connection
     
     //Set Baud Rate Generator to generate baud rate of 4800
-    U1CON0 = 0; //Bit 7 = 0 (BRGS)
-    U1BRGH = 18; // 0001 0010
-    U1BRGL = 192; // 1100 0000
+    U1CON0 = 0; //Bit 7 = 0 (BRGS) //Configure mode pins <3:0> 0000 sets the mode to 8 bit no parity
+    U1BRGH =  0x12; // 0001 0010
+    U1BRGL = 0xC0; // 1100 0000
     //Set RX1 to PORT C7
-    U1RXPPS = 0b1 0111;
-    //Configure mode pins <3:0> 0000 sets the mode to 8 bit no parity
-    U1CON0 |= 0; 
+    U1RXPPS = 0b10111;
+    
     //Set the ON bit
-    U1CON1 = 136;//1000 1000 Bit7=ON, Bit3 = RXBIMD(Receive Break Interrupt Mode Select bit)
+    U1CON1 = 0x88;//1000 1000 Bit7=ON, Bit3 = RXBIMD(Receive Break Interrupt Mode Select bit)
     //Set U1TXIE to enable interrupt
-    PIE3.U1RXIE = 1;
+    PIE3bits.U1RXIE = 1;
     //Enable reception by setting RXEN
-    U1CON0 |= 16; //Bit4=RXEN,
+    U1CON0bits.RXEN = 1;
     
     //End of UART connection setup
 
@@ -102,7 +97,8 @@ static void __interrupt() interrupt_handler() {
     if (PIR5) {
         //Handle CAN 
         can_handle_interrupt();
-    } else if (PIR3.U1RXIF) {
+    }
+    if (PIR3bits.U1RXIF) {
         //Handle GPS Interrupt
         if (U1ERRIR) {
             //error
@@ -111,6 +107,8 @@ static void __interrupt() interrupt_handler() {
             //data received. 
             LATB1 = 1;
         }
+        //Clear Interrupt bit
+        PIR3bits.U1RXIF = 0;
     }
 
     // Timer0 has overflowed - update millis() function
