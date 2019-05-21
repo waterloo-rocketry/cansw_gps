@@ -33,8 +33,9 @@ int main(void) {
     
     //Set Baud Rate Generator to generate baud rate of 4800
     U1CON0 = 0; //Bit 7 = 0 (BRGS) //Configure mode pins <3:0> 0000 sets the mode to 8 bit no parity
-    U1BRGH =  0x12; // 0001 0010
-    U1BRGL = 0xC0; // 1100 0000
+    U1BRGH =  0x0; // 0000 0000 ((Fosc/4800) / 16) -1 
+    U1BRGL = 0xC; // 0000 1000
+    
     //Set RX1 to PORT C7
     U1RXPPS = 0b10111;
     
@@ -44,6 +45,9 @@ int main(void) {
     PIE3bits.U1RXIE = 1;
     //Enable reception by setting RXEN
     U1CON0bits.RXEN = 1;
+    //Configure RX pin at C7
+    LATC7 = 1;
+    ANSELC7 = 0;
     
     //End of UART connection setup
 
@@ -60,18 +64,15 @@ int main(void) {
     //Set port C6 as output pin (RESET)
     TRISC6 = 0;
     //Set port C2 as output pin (ON_OFF)
-    TRISC2 = 0;
-    
+    TRISC2 = 0;    
     // Write a 1 to port C4 (WAKEUP)
     LATC4 = 1;
     //Toggle C2 for first startup after power on
     LATC2 = 1;
-    __delay_ms(300);
+    __delay_ms(250);
     LATC2 = 0;
-    // Write a 0 to port C6 (RESET) Writing a 1 because active low
+    // Write a 1 to port C6 (RESET) Writing a 1 because active low
     LATC6 = 1;
-    // Write a 1 to port B1 (LED 3)
-    LATB3 = 1;
     
     //end of GPS PINOUT setup
     
@@ -102,10 +103,11 @@ static void __interrupt() interrupt_handler() {
         //Handle GPS Interrupt
         if (U1ERRIR) {
             //error
-            LATB3 = 1;
-        } else if (U1RXB) {
+            LATB3 = 0;
+            U1ERRIR = 0; //ignore all errors
+        } if (U1RXB) {
             //data received. 
-            LATB1 = 1;
+            LATB3 = 1;
         }
         //Clear Interrupt bit
         PIR3bits.U1RXIF = 0;
