@@ -14,14 +14,65 @@
 
 #include "config.h"
 #include "timer.h"
+#include <string.h>
 
 #include <xc.h>
-
+#include <stdlib.h>
 #define _XTAL_FREQ 1000000
 
 // Memory pool for CAN transmit buffer
-uint8_t tx_pool[100];
+uint8_t tx_pool[500];
 
+char msgType[5];
+int msgTypeIndex;
+char timeStamp[9];
+int timeStampIndex;
+char latitude[10];
+int latitudeIndex;
+char latdir;
+char longitude[10];
+int longitudeIndex;
+char longdir;
+char qualind;
+char numOfSat[3];
+int numOfSatIndex;
+char HDOP[3];
+int HDOPIndex;
+char ANTALT[10];
+int ANTALTIndex;
+char ALTUNIT[2];
+int ALTUNITIndex;
+
+int x = 0;
+
+char buffer[100];
+int y = 0;
+char buffer1[100];
+int y1 = 0;
+char buffer2[100];
+int y2 = 0;
+char buffer3[100];
+int y3 = 0;
+
+
+uint16_t state = 0;
+/* STATES:
+ 0 IDLE
+ 1 START
+ 2 MESSAGETYPE
+ 3 TIMESTAMP
+ 4 LATITUDE
+ 5 LATITUDE DIRECTION (N-S)
+ 6 LONGITUDE 
+ 7 LONGITUDE DIRECTION (E-W)
+ 8 Quality Indicator: 1 = Uncorrected coordinate 2 = Differentially correct coordinate (e.g., WAAS, DGPS) 4 = RTK Fix coordinate (centimeter precision) 5 = RTK Float (decimeter precision.
+ 9 NUMBER OF SATELLITES 
+ 10 HDOP (horizontal dilution of precision)
+ 11 ALTITUDE OF ANTENNA
+ 12 ALTITUDE UNITS
+ 13 STOP
+ 14 ERROR
+ */
 
 
 int main(void) {
@@ -49,6 +100,8 @@ int main(void) {
     LATC7 = 1;
     ANSELC7 = 0;
     
+   
+    U1ERRIRbits.U1FERIF = 0;
     //End of UART connection setup
 
     
@@ -105,9 +158,101 @@ static void __interrupt() interrupt_handler() {
             //error
             LATB3 = 0;
             U1ERRIR = 0; //ignore all errors
-        } if (U1RXB) {
-            //data received. 
-            LATB3 = 1;
+        } 
+        if (U1RXB) {
+            /*if (y < 100) {
+                buffer[y] = U1RXB;
+                y++;
+            } else if (y1 < 100) {
+                buffer1[y1] = U1RXB;
+                y1++;
+            } else if (y2 < 100) {
+                buffer2[y2] = U1RXB;
+                y2++;
+            } else if (y3 < 100) {
+                buffer3[y3] = U1RXB;
+                y3++;
+            }*/
+            
+            //character received
+            switch(U1RXB) {
+                case '$':
+                    state = 2;
+                    msgTypeIndex = 0;
+                    timeStampIndex = 0;
+                    latitudeIndex = 0;
+                    longitudeIndex = 0;
+                    numOfSatIndex = 0;
+                    HDOPIndex = 0;
+                    ANTALTIndex = 0;
+                    ALTUNITIndex = 0;
+                    break;
+                   
+                case ',':
+                    if (state < 13) {
+                        if (state == 2) {
+                            if (strcmp(msgType, "GPGGA")) {
+                                //if we dont read a gpgga signal, then we wont care about the message for now
+                                state = 0;
+                                break;
+                            }
+                        }
+                        state++;
+                    }
+                    break;
+                default:
+
+                switch(state) {
+                    case 0://idle do nothing
+                        break;
+                    case 1://start, for debugging purposes
+                        break;
+                    case 2:
+                        msgType[msgTypeIndex++] = U1RXB;
+                        break;
+                    case 3:
+                        LATB3 ^= 1;
+                        timeStamp[timeStampIndex++] = U1RXB;
+                        break;
+                    case 4:
+                        latitude[latitudeIndex++] = U1RXB;
+                        break;
+                    case 5:
+                        latdir = U1RXB;
+                        break;
+                    case 6:
+                        longitude[longitudeIndex++] = U1RXB;
+                        break;
+                    case 7:
+                        longdir = U1RXB;
+                        break;
+                    case 8:
+                        qualind = U1RXB;
+                        break;
+                    case 9:
+                        numOfSat[numOfSatIndex++] = U1RXB;
+                        break;
+                    case 10:
+                        HDOP[HDOPIndex++] = U1RXB;
+                        break;
+                    case 11:
+                        ANTALT[ANTALTIndex++] = U1RXB;
+                        break;
+                    case 12:
+                        ALTUNIT[ALTUNITIndex++] = U1RXB;
+                        if (ALTUNITIndex == 3) {
+                            state++;
+                        }
+                        break;
+                    case 13://STOP, wait for next
+                        break;
+                    case 14: //ERROR state
+                        break;
+                    default: // Should be unreachable
+                        break;
+                }
+            }
+            
         }
         //Clear Interrupt bit
         PIR3bits.U1RXIF = 0;
