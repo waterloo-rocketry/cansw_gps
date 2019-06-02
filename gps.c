@@ -25,6 +25,27 @@ enum PARSER_STATE {
 };
 static enum PARSER_STATE state = P_IDLE;
 
+// message contents, stored locally
+static char msgType[5];
+static int msgTypeIndex;
+static char timeStamp[9];
+static int timeStampIndex;
+static char latitude[10];
+static int latitudeIndex;
+static char latdir;
+static char longitude[10];
+static int longitudeIndex;
+static char longdir;
+static char qualind;
+static char numOfSat[3];
+static int numOfSatIndex;
+static char HDOP[3];
+static int HDOPIndex;
+static char ANTALT[10];
+static int ANTALTIndex;
+static char ALTUNIT[2];
+static int ALTUNITIndex;
+
 static char GPGGA[5] = {'G', 'P', 'G', 'G', 'A'};   // hack
 void gps_handle_byte(uint8_t byte) {
 
@@ -42,13 +63,11 @@ void gps_handle_byte(uint8_t byte) {
             break;
 
         case ',':
-           if (state < P_ERROR) {
-               if (state == P_MSG_TYPE) {
+           if (P_MSG_TYPE <= state && state < P_ERROR) {
                    // apparently strcmp is being annoying 
                    if ((msgType[0] == GPGGA[0]) && (msgType[1] == GPGGA[1])
                             && (msgType[2] == GPGGA[2]) && (msgType[3] == GPGGA[3])
                             && (msgType[4] == GPGGA[4])) {
-
                         //if we read a GPGGA signal, then the state machine carries on
                         state++;
 
@@ -56,16 +75,11 @@ void gps_handle_byte(uint8_t byte) {
                         LATB1 ^= 1;
                         LATB2 ^= 1;
                         LATB3 ^= 1;
-                        break;
-                        
                    } else {
                         //if we don't read a GPGGA signal, then we wont care about the message for now
                         state = P_IDLE;
                    }
                 }
-            
-                // FIXME: state++ ?
-            }
             break;
 
         // Parse message fields
