@@ -63,7 +63,7 @@ void gps_handle_byte(uint8_t byte) {
             break;
 
         case ',':
-           if (P_MSG_TYPE <= state && state < P_ERROR) {
+            if (P_MSG_TYPE <= state && state < P_ERROR) {
                    // apparently strcmp is being annoying 
                    if ((msgType[0] == GPGGA[0]) && (msgType[1] == GPGGA[1])
                             && (msgType[2] == GPGGA[2]) && (msgType[3] == GPGGA[3])
@@ -79,7 +79,7 @@ void gps_handle_byte(uint8_t byte) {
                         //if we don't read a GPGGA signal, then we wont care about the message for now
                         state = P_IDLE;
                    }
-                }
+            }
             break;
 
         // Parse message fields

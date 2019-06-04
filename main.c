@@ -104,10 +104,8 @@ static void __interrupt() interrupt_handler() {
             //error
             U1ERRIR = 0; //ignore all errors
         }
-        if (U1FIFObits.RXBF) {
-            uint8_t byte = U1RXB;
-            gps_handle_byte(U1RXB);
-        }
+        uint8_t byte = U1RXB;
+        gps_handle_byte(byte);
         //Clear Interrupt bit
         PIR3bits.U1RXIF = 0;
     }
