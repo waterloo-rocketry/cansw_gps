@@ -16,6 +16,8 @@
 
 // Memory pool for CAN transmit buffer
 uint8_t tx_pool[500];
+static void can_msg_handler(const can_msg_t *msg);
+
 
 int main(void) {
     // Enable global interrupts
@@ -26,13 +28,20 @@ int main(void) {
     gps_init();
     timer0_init();
 
-    //Set port  B1 as output pin (LED 3)
-    TRISB1 = 0;
-    TRISB2 = 0;
-    TRISB3 = 0;
-    LATB1 = 0;
-    LATB2 = 0;
-    LATB3 = 0;
+    // Set up CAN TX
+    TRISC0 = 0;
+    RC0PPS = 0x33;
+
+    // Set up CAN RX
+    TRISC1 = 1;
+    ANSELC1 = 0;
+    CANRXPPS = 0x11;
+
+    // set up CAN module
+    can_timing_t can_setup;
+    can_generate_timing_params(_XTAL_FREQ, &can_setup);
+    can_init(&can_setup, can_msg_handler);
+    txb_init(tx_pool, sizeof(tx_pool), can_send, can_send_rdy);
 
     uint32_t last_millis = millis();
 
@@ -55,7 +64,7 @@ static void __interrupt() interrupt_handler() {
         //Handle CAN
         can_handle_interrupt();
     }
-    
+
     // deal with incoming UART bytes
     if (PIR3bits.U1RXIF) {
         //Handle GPS Interrupt
@@ -72,5 +81,31 @@ static void __interrupt() interrupt_handler() {
     if (PIE3bits.TMR0IE == 1 && PIR3bits.TMR0IF == 1) {
         timer0_handle_interrupt();
         PIR3bits.TMR0IF = 0;
+    }
+}
+
+// This is called from within can_handle_interrupt()
+static void can_msg_handler(const can_msg_t *msg) {
+    uint16_t msg_type = get_message_type(msg);
+    switch (msg_type) {
+        case MSG_GENERAL_CMD:
+            // nothing right now
+            break;
+
+        case MSG_LEDS_ON:
+            LED_1_ON();
+            LED_2_ON();
+            LED_3_ON();
+            break;
+
+        case MSG_LEDS_OFF:
+            LED_1_OFF();
+            LED_2_OFF();
+            LED_3_OFF();
+            break;
+
+        // all the other ones - do nothing
+        default:
+            break;
     }
 }
