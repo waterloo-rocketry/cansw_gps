@@ -8,46 +8,22 @@
 #include "config.h"
 #include "timer.h"
 #include <string.h>
-#include "gps.h"
+#include "gps_module.h"
+#include "gps_general.h"
 
 #include <xc.h>
 #include <stdlib.h>
-#define _XTAL_FREQ 1000000
 
 // Memory pool for CAN transmit buffer
 uint8_t tx_pool[500];
 
 int main(void) {
-
     // Enable global interrupts
     INTCON0bits.GIE = 1;
 
-    //set up UART connection
-
-    //Set Baud Rate Generator to generate baud rate of 4800
-    U1CON0 = 0; //Bit 7 = 0 (BRGS) //Configure mode pins <3:0> 0000 sets the mode to 8 bit no parity
-    U1BRGH =  0x0; // 0000 0000 ((Fosc/4800) / 16) -1
-    U1BRGL = 0xC; // 0000 1000
-
-    //Set RX1 to PORT C7
-    U1RXPPS = 0b10111;
-
-    //Set the ON bit
-    U1CON1 = 0x88;//1000 1000 Bit7=ON, Bit3 = RXBIMD(Receive Break Interrupt Mode Select bit)
-    //Set U1TXIE to enable interrupt
-    PIE3bits.U1RXIE = 1;
-    //Enable reception by setting RXEN
-    U1CON0bits.RXEN = 1;
-    //Configure RX pin at C7
-    LATC7 = 1;
-    ANSELC7 = 0;
-
-
-    U1ERRIRbits.U1FERIF = 0;
-    //End of UART connection setup
-
-
-    //timer setup
+    uart_init();
+    led_init();
+    gps_init();
     timer0_init();
 
     //Set port  B1 as output pin (LED 3)
@@ -57,25 +33,6 @@ int main(void) {
     LATB1 = 0;
     LATB2 = 0;
     LATB3 = 0;
-
-    //GPS PINOUT setup
-    //Set port  B1 as output pin (LED 3)
-    TRISB3 = 0;
-    //SET port C4 as output pin (WAKEUP) (This might not be needed during power_up, but I'll leave this here for reference later)
-    TRISC4 = 0;
-    //Set port C6 as output pin (RESET)
-    TRISC6 = 0;
-    //Set port C2 as output pin (ON_OFF)
-    TRISC2 = 0;
-    // Write a 1 to port C4 (WAKEUP)
-    LATC4 = 1;
-    //Toggle C2 for first startup after power on
-    LATC2 = 1;
-    __delay_ms(250);
-    LATC2 = 0;
-    // Write a 1 to port C6 (RESET) Writing a 1 because active low
-    LATC6 = 1;
-    //end of GPS PINOUT setup
 
     uint32_t last_millis = millis();
 
@@ -98,6 +55,8 @@ static void __interrupt() interrupt_handler() {
         //Handle CAN
         can_handle_interrupt();
     }
+    
+    // deal with incoming UART bytes
     if (PIR3bits.U1RXIF) {
         //Handle GPS Interrupt
         if (U1ERRIR) {
@@ -106,8 +65,6 @@ static void __interrupt() interrupt_handler() {
         }
         uint8_t byte = U1RXB;
         gps_handle_byte(byte);
-        //Clear Interrupt bit
-        PIR3bits.U1RXIF = 0;
     }
 
     // Timer0 has overflowed - update millis() function

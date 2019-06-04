@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<configurationDescriptor version="65">
+<configurationDescriptor version="62">
   <logicalFolder name="root" displayName="root" projectFiles="true">
     <logicalFolder name="f1" displayName="canlib" projectFiles="true">
       <itemPath>canlib/can.h</itemPath>
@@ -19,7 +19,8 @@
                    displayName="Header Files"
                    projectFiles="true">
       <itemPath>config.h</itemPath>
-      <itemPath>gps.h</itemPath>
+      <itemPath>gps_general.h</itemPath>
+      <itemPath>gps_module.h</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
@@ -31,7 +32,8 @@
       <itemPath>main.c</itemPath>
       <itemPath>timer.c</itemPath>
       <itemPath>timer.h</itemPath>
-      <itemPath>gps.c</itemPath>
+      <itemPath>gps_general.c</itemPath>
+      <itemPath>gps_module.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -56,9 +58,6 @@
         <languageToolchainVersion>2.05</languageToolchainVersion>
         <platform>4</platform>
       </toolsSet>
-      <packs>
-        <pack name="PIC18F-K_DFP" vendor="Microchip" version="1.0.48"/>
-      </packs>
       <compileType>
         <linkerTool>
           <linkerLibItems>

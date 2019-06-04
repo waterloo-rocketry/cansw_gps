@@ -1,29 +1,29 @@
-#include "gps.h"
+#include "gps_module.h"
+#include "gps_general.h"
+
 #include <xc.h>
 
-// Order matters for this enum
-enum PARSER_STATE {
-    P_IDLE = 0,
-    P_START,
-    P_MSG_TYPE,
-    P_TIMESTAMP,
-    P_LATITUDE,
-    P_LATITUDE_DIR_NS,
-    P_LONGITUDE,
-    P_LONGITUDE_DIR_EW,
-    P_QUALITY,            // Quality Indicator:
-                        // 1 = Uncorrected coordinate
-                        // 2 = Differentially correct coordinate (e.g., WAAS, DGPS)
-                        // 4 = RTK Fix coordinate (centimeter precision)
-                        // 5 = RTK Float (decimeter precision.
-    P_NUM_SATELLITES,
-    P_HDOP,               // (horizontal dilution of precision)
-    P_ALTITUDE_ANTENNA,
-    P_ALTITUDE_UNITS,
-    P_STOP,
-    P_ERROR,
-};
-static enum PARSER_STATE state = P_IDLE;
+void gps_init(void) {
+    //SET port C4 as output pin (WAKEUP) (This might not be needed during power_up, but I'll leave this here for reference later)
+    TRISC4 = 0;
+
+    //Set port C6 as output pin (RESET)
+    TRISC6 = 0;
+
+    //Set port C2 as output pin (ON_OFF)
+    TRISC2 = 0;
+
+    // Write a 1 to port C4 (WAKEUP)
+    LATC4 = 1;
+
+    //Toggle C2 for first startup after power on
+    LATC2 = 1;
+    __delay_ms(250);
+    LATC2 = 0;
+
+    // Write a 1 to port C6 (RESET) Writing a 1 because active low
+    LATC6 = 1;
+}
 
 // message contents, stored locally
 static char msgType[5];
@@ -47,6 +47,8 @@ static char ALTUNIT[2];
 static int ALTUNITIndex;
 
 static char GPGGA[5] = {'G', 'P', 'G', 'G', 'A'};   // hack
+static enum PARSER_STATE state = P_IDLE;
+
 void gps_handle_byte(uint8_t byte) {
 
     switch(byte) {
@@ -64,7 +66,7 @@ void gps_handle_byte(uint8_t byte) {
 
         case ',':
             if (P_MSG_TYPE <= state && state < P_ERROR) {
-                   // apparently strcmp is being annoying 
+                   // apparently strcmp is being annoying
                    if ((msgType[0] == GPGGA[0]) && (msgType[1] == GPGGA[1])
                             && (msgType[2] == GPGGA[2]) && (msgType[3] == GPGGA[3])
                             && (msgType[4] == GPGGA[4])) {
