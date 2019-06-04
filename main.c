@@ -48,12 +48,12 @@ int main(void) {
     //Main Loop
     while(1)
     {
-        /*if (millis() - last_millis > 1000) {
-            LATB3 ^= 1;
+        if (millis() - last_millis > 1000) {
+            led_heartbeat();
+            txb_heartbeat();
+
             last_millis = millis();
         }
-         */
-        //__delay_ms(1000);
 
     }
     return (EXIT_SUCCESS);

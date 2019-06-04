@@ -13,7 +13,9 @@
 #define LED_3_OFF() (LATB3 = 1)
 
 void uart_init(void);
+
 void led_init(void);
+void led_heartbeat(void);
 
 #endif	/* GENERAL_H */
 

@@ -1,4 +1,6 @@
 #include "gps_general.h"
+
+#include <stdbool.h>
 #include <xc.h>
 
 void uart_init(void) {
@@ -33,4 +35,15 @@ void led_init(void) {
 
     TRISB3 = 0;
     LED_3_OFF();
+}
+
+void led_heartbeat(void) {
+    static bool led_on = false;
+    if (led_on) {
+        LED_1_OFF();
+        led_on = false;
+    } else {
+        LED_1_ON();
+        led_on = true;
+    }
 }
