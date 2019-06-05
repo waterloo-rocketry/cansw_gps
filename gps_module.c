@@ -44,7 +44,7 @@ static int latitude_index;
 static char latdir;
 static char longitude[10];
 static int longitude_index;
-static char longdir;
+static char londir;
 static char qualind;
 static char numsat[3];
 static int numsat_index;
@@ -73,6 +73,49 @@ static void assemble_can_msgs(void) {
     build_gps_time_msg(millis(), utc_hours, utc_mins, utc_secs, utc_dsecs, &msg);
     // copy message over to msg queue
     txb_enqueue(&msg);
+    
+    // Latitude format is DDMM.MM (we ignore only take the first 2 decimals)
+    uint8_t lat_degree = DIGIT(latitude[0]) * 10 + DIGIT(latitude[1]);
+    uint8_t lat_minute = DIGIT(latitude[2]) * 10 + DIGIT(latitude[3]);
+    // We skip over the decimal point here
+    uint8_t lat_dminutes = DIGIT(latitude[5]) * 10 + DIGIT(latitude[6]);
+    build_gps_lat_msg(millis(), lat_degree, lat_minute, lat_dminutes, latdir, &msg);
+    txb_enqueue(&msg);
+    
+    // Longitude format is DDDMM.MM (we ignore only take the first 2 decimals)
+    uint8_t lon_degree = DIGIT(latitude[0]) * 100 + DIGIT(latitude[1]) * 10 + DIGIT(latitude[2]);
+    uint8_t lon_minute = DIGIT(latitude[3]) * 10 + DIGIT(latitude[4]);
+    // We skip over the decimal point here
+    uint8_t lon_dminutes = DIGIT(latitude[6]) * 10 + DIGIT(latitude[7]);
+    build_gps_lon_msg(millis(), lon_degree, lon_minute, lon_dminutes, londir, &msg);
+    txb_enqueue(&msg);
+    
+    // Altitude format can either be AAA.D or AAAA.D depending on how high we are. Thus, we need to find the decimal position.
+    uint8_t decimal_place= 0;
+    for (int x = 0; x < 10; x++) {
+        if (ANTALT[x] == '.') {
+            decimal_place = x;
+        }
+    }
+    //decimal_place can be either 3 or 4 (eg altitude < 1000m for 3 or <10000m for 4. I don't think will reach 5, and we definately won't hit 2) 
+    if (decimal_place == 3) {
+        uint16_t altitude = DIGIT(ANTALT[0]) * 100 + DIGIT(ANTALT[1]) * 10 + DIGIT(ANTALT[2]);
+        uint8_t daltitude = DIGIT(ANTALT[4]);
+        build_gps_alt_msg(millis(), altitude, daltitude, ALTUNIT[0], &msg);
+        txb_enqueue(&msg);
+    } else if (decimal_place == 4) {
+        uint16_t altitude = DIGIT(ANTALT[0]) * 1000 + DIGIT(ANTALT[1]) * 100 + DIGIT(ANTALT[2]) * 10 + DIGIT(ANTALT[3]);
+        uint8_t daltitude = DIGIT(ANTALT[5]);
+        build_gps_alt_msg(millis(), altitude, daltitude, ALTUNIT[0], &msg);
+        txb_enqueue(&msg);
+    }
+    
+    // Info format is currently number of satellites + quality
+    uint8_t num_sat = DIGIT(numsat[0]) * 10 + DIGIT(numsat[1]);
+    uint8_t quality = DIGIT(qualind);
+    build_gps_info_msg(millis(), num_sat, quality, &msg);
+    txb_enqueue(&msg);
+    
 }
 
 void gps_handle_byte(uint8_t byte) {
@@ -135,7 +178,7 @@ void gps_handle_byte(uint8_t byte) {
                     longitude[longitude_index++] = byte;
                     break;
                 case P_LONGITUDE_DIR_EW:
-                    longdir = byte;
+                    londir = byte;
                     break;
                 case P_QUALITY:
                     qualind = byte;
