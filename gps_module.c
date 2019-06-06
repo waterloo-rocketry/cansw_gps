@@ -199,7 +199,7 @@ void gps_handle_byte(uint8_t byte) {
                     }
                     break;
                 case P_STOP:    //STOP, wait for next
-                    // FIXME: enqueue GPS message here
+                    assemble_can_msgs();
                     break;
                 case P_ERROR:   //ERROR state
                     break;
