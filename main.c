@@ -50,10 +50,9 @@ int main(void) {
     {
         if (millis() - last_millis > 1000) {
             led_heartbeat();
-            txb_heartbeat();
-
             last_millis = millis();
         }
+        txb_heartbeat();
 
     }
     return (EXIT_SUCCESS);
