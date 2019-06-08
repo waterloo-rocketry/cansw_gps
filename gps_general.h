@@ -15,7 +15,7 @@
 void uart_init(void);
 
 void led_init(void);
-void led_heartbeat(void);
+void led_1_heartbeat(void);
 
 #endif	/* GENERAL_H */
 

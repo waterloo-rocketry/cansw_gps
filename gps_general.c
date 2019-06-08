@@ -37,7 +37,7 @@ void led_init(void) {
     LED_3_OFF();
 }
 
-void led_heartbeat(void) {
+void led_1_heartbeat(void) {
     static bool led_on = false;
     if (led_on) {
         LED_1_OFF();

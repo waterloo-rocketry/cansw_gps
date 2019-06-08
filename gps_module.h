@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+uint8_t RecievedFirstMessage = 0;
+
 // Order matters for this enum, matches the order of GPGGA fields
 enum PARSER_STATE {
     P_IDLE = 0,
@@ -27,7 +29,11 @@ enum PARSER_STATE {
 };
 
 void gps_init(void);
+
+void assemble_can_msgs(void);
+
 void gps_handle_byte(uint8_t byte);
+
 
 #endif	/* GPS_H */
 
