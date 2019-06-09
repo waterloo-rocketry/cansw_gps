@@ -22,7 +22,7 @@
 
 // Memory pool for CAN transmit buffer
 uint8_t tx_pool[500];
-char GPGGA[5] = {'G', 'P', 'G', 'G', 'A'};//"GPGGA"
+
 char msgType[5];
 int msgTypeIndex;
 char timeStamp[9];
@@ -111,12 +111,7 @@ int main(void) {
     //GPS PINOUT setup
     
     //Set port  B1 as output pin (LED 3)
-    TRISB1 = 0;
-    TRISB2 = 0;
     TRISB3 = 0;
-    LATB1 = 0;
-    LATB2 = 0;
-    LATB3 = 0;
     //SET port C4 as output pin (WAKEUP) (This might not be needed during power_up, but i'll leave this here for reference later)
     TRISC4 = 0;
     //Set port C6 as output pin (RESET)
@@ -161,10 +156,23 @@ static void __interrupt() interrupt_handler() {
         //Handle GPS Interrupt
         if (U1ERRIR) {
             //error
-            
+            LATB3 = 0;
             U1ERRIR = 0; //ignore all errors
         } 
         if (U1RXB) {
+            /*if (y < 100) {
+                buffer[y] = U1RXB;
+                y++;
+            } else if (y1 < 100) {
+                buffer1[y1] = U1RXB;
+                y1++;
+            } else if (y2 < 100) {
+                buffer2[y2] = U1RXB;
+                y2++;
+            } else if (y3 < 100) {
+                buffer3[y3] = U1RXB;
+                y3++;
+            }*/
             
             //character received
             switch(U1RXB) {
@@ -183,20 +191,13 @@ static void __interrupt() interrupt_handler() {
                 case ',':
                     if (state < 13) {
                         if (state == 2) {
-                             if ((msgType[0] == GPGGA[0]) && (msgType[1] == GPGGA[1]) && (msgType[2] == GPGGA[2]) && (msgType[3] == GPGGA[3]) && (msgType[4] == GPGGA[4])) {
-                                //if we read a GPGGA signal, then the state machine carries on
-                                state++;
-                                LATB1 ^= 1;
-                                LATB2 ^= 1;
-                                LATB3 ^= 1;
-                                break;
-                            } else {
-                                 //if we dont read a GPGGA signal, then we wont care about the message for now
+                            if (strcmp(msgType, "GPGGA")) {
+                                //if we dont read a gpgga signal, then we wont care about the message for now
                                 state = 0;
-
+                                break;
                             }
                         }
-                        
+                        state++;
                     }
                     break;
                 default:
@@ -208,13 +209,9 @@ static void __interrupt() interrupt_handler() {
                         break;
                     case 2:
                         msgType[msgTypeIndex++] = U1RXB;
-                        
                         break;
                     case 3:
-                        //LATB1 ^= 1;
-                        //LATB2 ^= 1;
-                        //LATB3 ^= 1;
-                        
+                        LATB3 ^= 1;
                         timeStamp[timeStampIndex++] = U1RXB;
                         break;
                     case 4:
