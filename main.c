@@ -20,6 +20,7 @@ static void can_msg_handler(const can_msg_t *msg);
 
 
 int main(void) {
+    //__delay_ms(8000); //Debugging purposes.
     // Enable global interrupts
     INTCON0bits.GIE = 1;
 
@@ -44,13 +45,24 @@ int main(void) {
     txb_init(tx_pool, sizeof(tx_pool), can_send, can_send_rdy);
 
     uint32_t last_millis = millis();
-
+    
+    __delay_ms(300);
+    
+    while (!RecievedFirstMessage) {
+        //If we haven't received anything, toggle ON_OFF.
+        LATC2 = 1;
+        __delay_ms(300);
+        LATC2 = 0;
+        __delay_ms(300);
+    }
+    LATB3 = 0;
     //Main Loop
     while(1)
     {
-        if (millis() - last_millis > 1000) {
-            led_heartbeat();
+        if (millis() - last_millis > 500) {
+            led_1_heartbeat();
             last_millis = millis();
+            
         }
         txb_heartbeat();
 
@@ -70,6 +82,10 @@ static void __interrupt() interrupt_handler() {
         if (U1ERRIR) {
             //error
             U1ERRIR = 0; //ignore all errors
+        }
+        if (RecievedFirstMessage == 0) {
+            //we received something from uart for the first time. 
+            RecievedFirstMessage = 1;
         }
         uint8_t byte = U1RXB;
         gps_handle_byte(byte);

@@ -24,29 +24,35 @@ void gps_init(void) {
 
     // Write a 1 to port C4 (WAKEUP)
     LATC4 = 1;
-
+    LATC2 = 0;
     //Toggle C2 for first startup after power on
     LATC2 = 1;
-    __delay_ms(250);
+    __delay_ms(300);
     LATC2 = 0;
-
+    __delay_ms(300);
+    for (int x = 0; x < 100; x++) {
+       //LATC2 = 1; 
+       __delay_ms(10);
+    }
+    
     // Write a 1 to port C6 (RESET) Writing a 1 because active low
     LATC6 = 1;
 }
 
 // message contents, stored locally
-static char msgType[5];
+//I've commented out the placeholders that I've been using
+static char msgType[5];// = {'9', '9', '9', '9', '9'};
 static int msgTypeIndex;
-static char timestamp[9];
+static char timestamp[9];// = {'9', '9', '9', '9', '9', '9', '.', '9', '9'};
 static int timestamp_index;
-static char latitude[10];
+static char latitude[10];// = {'9', '9', '9', '9', '.', '9', '9', '9', '9', '9'};
 static int latitude_index;
 static char latdir;
-static char longitude[10];
+static char longitude[10];// = {'9', '9', '9', '9', '9', '.', '9', '9', '9', '9'};
 static int longitude_index;
 static char londir;
-static char qualind;
-static char numsat[3];
+static char qualind = '9';
+static char numsat[3] = {'9', '9', '9'};
 static int numsat_index;
 static char hdop[3];
 static int hdop_index;
@@ -55,13 +61,14 @@ static int ANTALTIndex;
 static char ALTUNIT[2];
 static int ALTUNITIndex;
 
+
 static char GPGGA[5] = {'G', 'P', 'G', 'G', 'A'};   // hack
 static enum PARSER_STATE state = P_IDLE;
 
 // assuming we only pass it base 10 digits, which should be true for this
 #define DIGIT(x) (x - '0')
 
-static void assemble_can_msgs(void) {
+void assemble_can_msgs(void) {
     can_msg_t msg;
 
     // UTC format is hhmmss.ss
@@ -124,6 +131,7 @@ void gps_handle_byte(uint8_t byte) {
 
     switch(byte) {
         case '$':
+            LATB2 ^= 1;
             state = P_MSG_TYPE;
             msgTypeIndex = 0;
             timestamp_index = 0;
@@ -138,16 +146,11 @@ void gps_handle_byte(uint8_t byte) {
         case ',':
             if (P_MSG_TYPE <= state && state < P_ERROR) {
                    // apparently strcmp is being annoying
-                   if ((msgType[0] == GPGGA[0]) && (msgType[1] == GPGGA[1])
-                            && (msgType[2] == GPGGA[2]) && (msgType[3] == GPGGA[3])
-                            && (msgType[4] == GPGGA[4])) {
+                   if ((msgType[0] == 'G') && (msgType[1] == 'P')
+                            && (msgType[2] == 'G') && (msgType[3] == 'G')
+                            && (msgType[4] == 'A')) {
                         //if we read a GPGGA signal, then the state machine carries on
-                        state++;
-
-                        // blink the LEDs
-                        LATB1 ^= 1;
-                        LATB2 ^= 1;
-                        LATB3 ^= 1;
+                        state++; 
                    } else {
                         //if we don't read a GPGGA signal, then we wont care about the message for now
                         state = P_IDLE;
@@ -167,7 +170,6 @@ void gps_handle_byte(uint8_t byte) {
                     msgType[msgTypeIndex++] = byte;
                     break;
                 case P_TIMESTAMP:
-                    LATB3 ^= 1;
                     timestamp[timestamp_index++] = byte;
                     break;
                 case P_LATITUDE:
@@ -196,11 +198,9 @@ void gps_handle_byte(uint8_t byte) {
                     break;
                 case P_ALTITUDE_UNITS:
                     ALTUNIT[ALTUNITIndex++] = byte;
-                    if (ALTUNITIndex == 3) {
-                        state = P_STOP;
-                    }
                     break;
                 case P_STOP:    //STOP, wait for next
+                    LATB3 ^= 1;
                     assemble_can_msgs();
                     break;
                 case P_ERROR:   //ERROR state
