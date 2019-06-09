@@ -90,7 +90,7 @@
         <property key="asmlist" value="true"/>
         <property key="default-bitfield-type" value="true"/>
         <property key="default-char-type" value="true"/>
-        <property key="define-macros" value="BOARD_UNIQUE_ID=0x05"/>
+        <property key="define-macros" value="BOARD_UNIQUE_ID=BOARD_ID_GPS"/>
         <property key="disable-optimizations" value="true"/>
         <property key="extra-include-directories"
                   value="canlib/util;canlib;canlib/pic18f26k83"/>

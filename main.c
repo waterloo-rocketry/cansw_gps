@@ -20,7 +20,7 @@ static void can_msg_handler(const can_msg_t *msg);
 
 
 int main(void) {
-    //__delay_ms(8000); //Debugging purposes.
+    __delay_ms(8000); //Debugging purposes.
     // Enable global interrupts
     INTCON0bits.GIE = 1;
 
