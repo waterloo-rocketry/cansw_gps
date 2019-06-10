@@ -77,7 +77,6 @@ void assemble_can_msgs_utc(void) {
     uint8_t utc_dsecs = DIGIT(timestamp[7]) * 10 + DIGIT(timestamp[8]);
     build_gps_time_msg(millis(), utc_hours, utc_mins, utc_secs, utc_dsecs, &msg_utc);
     // copy message over to msg queue
-<<<<<<< HEAD
     txb_enqueue(&msg_utc);
 }
 
@@ -85,16 +84,10 @@ void assemble_can_msgs_lat(void) {
     can_msg_t msg_lat;
     
     // Latitude format is DDMM.MM (we ignore only take the first 2 decimals)
-=======
-    txb_enqueue(&msg);
-
-    // Latitude format is DDMM.MMMM. We only take the first 2 decimals.
->>>>>>> 47807271265276f47074fbd9ee2f9e53c4d34416
     uint8_t lat_degree = DIGIT(latitude[0]) * 10 + DIGIT(latitude[1]);
     uint8_t lat_minute = DIGIT(latitude[2]) * 10 + DIGIT(latitude[3]);
     // We skip over the decimal point here
     uint8_t lat_dminutes = DIGIT(latitude[5]) * 10 + DIGIT(latitude[6]);
-<<<<<<< HEAD
     build_gps_lat_msg(millis(), lat_degree, lat_minute, lat_dminutes, latdir, &msg_lat);
     txb_enqueue(&msg_lat);
 }
@@ -114,21 +107,6 @@ void assemble_can_msgs_lon(void) {
 void assemble_can_msgs_alt(void) {
     can_msg_t msg_alt;
     // Altitude format can either be AAA.D or AAAA.D depending on how high we are. Thus, we need to find the decimal position.
-=======
-    build_gps_lat_msg(millis(), lat_degree, lat_minute, lat_dminutes, latdir, &msg);
-    txb_enqueue(&msg);
-
-    // Longitude format is DDDMM.MMMM. We only take the first 2 decimals.
-    uint8_t lon_degree = DIGIT(latitude[0]) * 100 + DIGIT(latitude[1]) * 10 + DIGIT(latitude[2]);
-    uint8_t lon_minute = DIGIT(latitude[3]) * 10 + DIGIT(latitude[4]);
-    // We skip over the decimal point here
-    uint8_t lon_dminutes = DIGIT(latitude[6]) * 10 + DIGIT(latitude[7]);
-    build_gps_lon_msg(millis(), lon_degree, lon_minute, lon_dminutes, londir, &msg);
-    txb_enqueue(&msg);
-
-    // Altitude format can either be AAA.D or AAAA.D depending on how high we are.
-    // Thus, we need to find the decimal position.
->>>>>>> 47807271265276f47074fbd9ee2f9e53c4d34416
     uint8_t decimal_place= 0;
     for (int x = 0; x < 10; x++) {
         if (ANTALT[x] == '.') {
@@ -148,7 +126,6 @@ void assemble_can_msgs_alt(void) {
         build_gps_alt_msg(millis(), altitude, daltitude, ALTUNIT[0], &msg_alt);
         txb_enqueue(&msg_alt);
     }
-<<<<<<< HEAD
 }
     
 void assemble_can_msgs_info(void) {
@@ -158,15 +135,6 @@ void assemble_can_msgs_info(void) {
     uint8_t quality = DIGIT(qualind);
     build_gps_info_msg(millis(), num_sat, quality, &msg_info);
     txb_enqueue(&msg_info);
-=======
-
-    // Info format is currently number of satellites + quality
-    uint8_t num_sat = DIGIT(numsat[0]) * 10 + DIGIT(numsat[1]);
-    uint8_t quality = DIGIT(qualind);
-    build_gps_info_msg(millis(), num_sat, quality, &msg);
-    txb_enqueue(&msg);
-
->>>>>>> 47807271265276f47074fbd9ee2f9e53c4d34416
 }
 
 void gps_handle_byte(uint8_t byte) {
