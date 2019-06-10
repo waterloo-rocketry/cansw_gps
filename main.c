@@ -5,11 +5,14 @@
 #include "canlib/util/timing_util.h"
 #include "canlib/util/can_tx_buffer.h"
 
+#include "mcc_generated_files/fvr.h"
+#include "mcc_generated_files/adcc.h"
+
 #include "config.h"
 #include "timer.h"
-#include <string.h>
 #include "gps_module.h"
 #include "gps_general.h"
+#include "error_checks.h"
 
 #include <xc.h>
 #include <stdlib.h>
@@ -18,9 +21,13 @@
 uint8_t tx_pool[500];
 static void can_msg_handler(const can_msg_t *msg);
 
+static void send_status_ok(void);
+
 
 int main(void) {
-    //__delay_ms(8000); //Debugging purposes.
+    ADCC_Initialize();
+    FVR_Initialize();
+
     // Enable global interrupts
     INTCON0bits.GIE = 1;
 
@@ -45,9 +52,9 @@ int main(void) {
     txb_init(tx_pool, sizeof(tx_pool), can_send, can_send_rdy);
 
     uint32_t last_millis = millis();
-    
+
     __delay_ms(300);
-    
+
     while (!RecievedFirstMessage) {
         //If we haven't received anything, toggle ON_OFF.
         LATC2 = 1;
@@ -56,16 +63,18 @@ int main(void) {
         __delay_ms(300);
     }
     LATB3 = 0;
-    //Main Loop
-    while(1)
-    {
-        if (millis() - last_millis > 500) {
+
+    while(1) {
+        if (millis() - last_millis > MAX_LOOP_TIME_DIFF_ms) {
+            bool status_ok = check_bus_current_error();
+            if (status_ok) {
+                send_status_ok();
+            }
+
             led_1_heartbeat();
             last_millis = millis();
-            
         }
         txb_heartbeat();
-
     }
     return (EXIT_SUCCESS);
 }
@@ -84,7 +93,7 @@ static void __interrupt() interrupt_handler() {
             U1ERRIR = 0; //ignore all errors
         }
         if (RecievedFirstMessage == 0) {
-            //we received something from uart for the first time. 
+            //we received something from uart for the first time.
             RecievedFirstMessage = 1;
         }
         uint8_t byte = U1RXB;
@@ -123,4 +132,13 @@ static void can_msg_handler(const can_msg_t *msg) {
         default:
             break;
     }
+}
+
+// Send a CAN message with nominal status
+static void send_status_ok(void) {
+    can_msg_t board_stat_msg;
+    build_board_stat_msg(millis(), E_NOMINAL, NULL, 0, &board_stat_msg);
+
+    // send it off at low priority
+    txb_enqueue(&board_stat_msg);
 }
