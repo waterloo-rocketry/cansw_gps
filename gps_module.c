@@ -165,8 +165,8 @@ void gps_handle_byte(uint8_t byte) {
                             assemble_can_msgs_lat();
                         } else if (state == P_LONGITUDE_DIR_EW && *(longitude) != 0) {
                             assemble_can_msgs_lon();
-                        } else if (state == P_NUM_SATELLITES && qualind != 0) {
-                            //assemble_can_msgs_info();
+                        } else if (state == P_NUM_SATELLITES && *(latitude) != 0 && *(longitude) != 0 && qualind != 0 && *(ANTALT) != 0) {
+                            assemble_can_msgs_info();
                         } else if (state == P_ALTITUDE_UNITS && *(ANTALT) != 0) {
                             assemble_can_msgs_alt();
                         }
