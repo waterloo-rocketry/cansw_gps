@@ -22,7 +22,7 @@ uint8_t tx_pool[500];
 static void can_msg_handler(const can_msg_t *msg);
 
 static void send_status_ok(void);
-
+static void send_status_error_module(void);
 
 int main(void) {
     __delay_ms(8000); //Debugging purposes.
@@ -56,12 +56,16 @@ int main(void) {
 
     __delay_ms(300);
 
-    while (!RecievedFirstMessage) {
+    while (!recieved_first_message) {
         //If we haven't received anything, toggle ON_OFF.
         LATC2 = 1;
         __delay_ms(300);
         LATC2 = 0;
         __delay_ms(300);
+        if (++num_toggle > 10) {
+            //we've been toggling for more than 10 times, something is definitely wrong.
+            send_status_error_module();
+        }
     }
     LATB3 = 0;
 
@@ -93,9 +97,9 @@ static void __interrupt() interrupt_handler() {
             //error
             U1ERRIR = 0; //ignore all errors
         }
-        if (RecievedFirstMessage == 0) {
+        if (recieved_first_message == 0) {
             //we received something from uart for the first time.
-            RecievedFirstMessage = 1;
+            recieved_first_message = 1;
         }
         uint8_t byte = U1RXB;
         gps_handle_byte(byte);
@@ -145,11 +149,14 @@ static void can_msg_handler(const can_msg_t *msg) {
 // Send a CAN message with nominal status
 static void send_status_ok(void) {
     can_msg_t board_stat_msg;
-    if (RecievedFirstMessage) {
         build_board_stat_msg(millis(), E_NOMINAL, NULL, 0, &board_stat_msg);       
-    } else {
-        build_board_stat_msg(millis(), E_GPS, NULL, 0, &board_stat_msg);
-    }
+    // send it off at low priority
+    txb_enqueue(&board_stat_msg);
+}
+
+static void send_status_error_module(void) {
+    can_msg_t board_stat_msg;
+        build_board_stat_msg(millis(), E_GPS, NULL, 0, &board_stat_msg);       
     // send it off at low priority
     txb_enqueue(&board_stat_msg);
 }
