@@ -3,8 +3,6 @@
 
 #include <stdint.h>
 
-uint8_t recieved_first_message = 0;
-int num_toggle = 0;
 // Order matters for this enum, matches the order of GPGGA fields
 enum PARSER_STATE {
     P_IDLE = 0,

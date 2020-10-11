@@ -13,30 +13,17 @@
 #include <xc.h>
 
 void gps_init(void) {
-    //SET port C4 as output pin (WAKEUP) (This might not be needed during power_up, but I'll leave this here for reference later)
-    TRISC4 = 0;
-
-    //Set port C6 as output pin (RESET)
-    TRISC6 = 0;
-
-    //Set port C2 as output pin (ON_OFF)
+    // Set port C2 as output pin (~HWR)
     TRISC2 = 0;
 
-    // Write a 1 to port C4 (WAKEUP)
-    LATC4 = 1;
-    LATC2 = 0;
-    //Toggle C2 for first startup after power on
+    // Set C2 to high because it's active low
     LATC2 = 1;
-    __delay_ms(300);
-    LATC2 = 0;
-    __delay_ms(300);
-    for (int x = 0; x < 100; x++) {
-       //LATC2 = 1; 
-       __delay_ms(10);
-    }
-    
-    // Write a 1 to port C6 (RESET) Writing a 1 because active low
-    LATC6 = 1;
+
+    // Set C3 to input (FIX)
+    TRISC3 = 1;
+
+    // Set C4 to input (PPS)
+    TRISC4 = 1;
 }
 
 // message contents, stored locally
