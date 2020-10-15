@@ -127,7 +127,7 @@ void assemble_can_msgs_info(void) {
 void gps_handle_byte(uint8_t byte) {
     switch(byte) {
         case '$':
-            LATB2 ^= 1;
+            LATB2 ^= 1; // toggle led
             state = P_MSG_TYPE;
             msgTypeIndex = 0;
             timestamp_index = 0;
@@ -207,7 +207,7 @@ void gps_handle_byte(uint8_t byte) {
                     ALTUNIT[ALTUNITIndex++] = byte;
                     break;
                 case P_STOP:    //STOP, wait for next
-                    LATB3 ^= 1;
+                    //LATB3 ^= 1; // TODO do something
                     state = P_IDLE;
                     break;
                 case P_ERROR:   //ERROR state

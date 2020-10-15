@@ -24,6 +24,8 @@ static void can_msg_handler(const can_msg_t *msg);
 static void send_status_ok(void);
 static void send_status_error_module(void);
 
+static uint8_t recieved_first_message = 0;
+
 int main(void) {
     __delay_ms(8000); //Debugging purposes.
     ADCC_Initialize();
@@ -54,22 +56,20 @@ int main(void) {
 
     uint32_t last_millis = millis();
 
-    // Wait for GPS fix
-    int wait_count = 0;
-    while (!LATC3) {
-        __delay_ms(500);
-        if (++wait_count > 10) {
-            // waited for too long, something's wrong
-            send_status_error_module();
+    __delay_ms(300);
 
-            // try resetting the device
-            LATC2 = 0;
-            __delay_ms(100);
-            LATC2 = 1;
+    int num_toggle = 0;
+    while (!recieved_first_message) {
+        //If we haven't received anything, try reset
+        LATC2 = 0;
+        __delay_ms(300);
+        LATC2 = 1;
+        __delay_ms(300);
+        if (++num_toggle > 10) {
+            //we've been toggling for more than 10 times, something is definitely wrong.
+            send_status_error_module();
         }
     }
-
-    LED_2_ON();
 
     while(1) {
         if (millis() - last_millis > MAX_LOOP_TIME_DIFF_ms) {
@@ -99,7 +99,10 @@ static void __interrupt() interrupt_handler() {
             //error
             U1ERRIR = 0; //ignore all errors
         }
-
+        if (recieved_first_message == 0) {
+            //we received something from uart for the first time.
+            recieved_first_message = 1;
+        }
         uint8_t byte = U1RXB;
         gps_handle_byte(byte);
     }
