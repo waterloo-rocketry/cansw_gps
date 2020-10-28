@@ -27,7 +27,7 @@ static void send_status_error_module(void);
 static uint8_t recieved_first_message = 0;
 
 int main(void) {
-    __delay_ms(8000); //Debugging purposes.
+    //__delay_ms(8000); //Debugging purposes.
     ADCC_Initialize();
     FVR_Initialize();
 

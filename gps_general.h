@@ -3,7 +3,7 @@
 
 #include <xc.h>
 
-#define _XTAL_FREQ 1000000
+#define _XTAL_FREQ 12000000
 #define MAX_LOOP_TIME_DIFF_ms 500
 
 #define LED_1_ON() (LATB1 = 1)
