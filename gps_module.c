@@ -68,7 +68,7 @@ void assemble_can_msgs_utc(void) {
 
 void assemble_can_msgs_lat(void) {
     can_msg_t msg_lat;
-    
+
     int lat, dmin;
     strtodec(parser.coord.msg, &lat, &dmin);
 
@@ -84,7 +84,7 @@ void assemble_can_msgs_lon(void) {
 
     build_gps_lon_msg(millis(), lon / 100, lon % 100, dmin, parser.coord.dir, &msg_lon);
     txb_enqueue(&msg_lon);
-}    
+}
 
 void assemble_can_msgs_alt(void) {
     can_msg_t msg_alt;
@@ -95,7 +95,7 @@ void assemble_can_msgs_alt(void) {
     build_gps_alt_msg(millis(), alt, dalt, parser.coord.dir, &msg_alt);
     txb_enqueue(&msg_alt);
 }
-    
+
 void assemble_can_msgs_info(void) {
     can_msg_t msg_info;
 
@@ -142,7 +142,7 @@ void gps_handle_byte(uint8_t byte) {
                         state = P_STOP;
                         return;
                     } else {
-                        LED_2_ON();
+                        LED_2_LAT = 1;
                     }
                     break;
                 case P_TIMESTAMP:
@@ -210,7 +210,7 @@ void gps_handle_byte(uint8_t byte) {
                     parser.coord.dir = byte;
                     break;
                 case P_STOP:
-                    LED_2_OFF();
+                    LED_2_LAT = 0;
                     state = P_IDLE;
                     break;
                 case P_ERROR:

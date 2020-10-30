@@ -16,8 +16,8 @@ extern "C" {
 // 'C' source line config statements
 
 // CONFIG1L
-#pragma config FEXTOSC = HS     // External Oscillator Selection (Oscillator set to high power)
-#pragma config RSTOSC = EXTOSC  // Using external oscillator
+#pragma config FEXTOSC = OFF
+#pragma config RSTOSC = HFINTOSC_64MHZ
 
 // CONFIG1H
 #pragma config CLKOUTEN = OFF   // Clock out Enable bit (CLKOUT function is disabled)
