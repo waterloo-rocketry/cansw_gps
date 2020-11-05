@@ -24,7 +24,7 @@ static void can_msg_handler(const can_msg_t *msg);
 static void send_status_ok(void);
 static void send_status_error_module(void);
 
-static uint8_t recieved_first_message = 0;
+static volatile uint8_t recieved_first_message = 0;
 
 int main(void) {
 
@@ -67,18 +67,20 @@ int main(void) {
 
     uint32_t last_millis = millis();
 
-    __delay_ms(300);
+    // Turn LED 1 on
+    LED_1_LAT = 1;
 
-    int num_toggle = 0;
+    // Wait for the first message
     while (!recieved_first_message) {
-        //If we haven't received anything, try reset
-        LATC2 = 0;
-        __delay_ms(300);
-        LATC2 = 1;
-        __delay_ms(300);
-        if (++num_toggle > 10) {
-            //we've been toggling for more than 10 times, something is definitely wrong.
+        if (millis() - last_millis > 5000) {
+            // Haven't received anything, try reset
+            LATC2 = 0;
+            __delay_ms(100);
+            LATC2 = 1;
+            __delay_ms(100);
+
             send_status_error_module();
+            last_millis = millis();
         }
     }
 
@@ -94,6 +96,7 @@ int main(void) {
         }
         txb_heartbeat();
     }
+
     return (EXIT_SUCCESS);
 }
 
@@ -117,6 +120,7 @@ static void __interrupt() interrupt_handler() {
         }
 
         gps_handle_byte(U1RXB);
+
         PIR3bits.U1RXIF = 0;
     }
 
@@ -130,7 +134,6 @@ static void __interrupt() interrupt_handler() {
 // This is called from within can_handle_interrupt()
 static void can_msg_handler(const can_msg_t *msg) {
     uint16_t msg_type = get_message_type(msg);
-    int cmd_type = -1;
     switch (msg_type) {
         case MSG_LEDS_ON:
             LED_1_LAT = 1;
@@ -141,8 +144,8 @@ static void can_msg_handler(const can_msg_t *msg) {
             LED_1_LAT = 0;
             LED_2_LAT = 0;
             break;
-        // all the other ones - do nothing
         default:
+            // all the other ones - do nothing
             break;
     }
 }
