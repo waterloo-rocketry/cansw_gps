@@ -43,5 +43,8 @@ void led_init(void) {
 }
 
 void led_1_heartbeat(void) {
-    LED_1_LAT ^= 1;
+    if(LATB1)
+        LED_1_OFF();
+    else
+        LED_1_ON();
 }

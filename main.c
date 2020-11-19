@@ -68,12 +68,12 @@ int main(void) {
     uint32_t last_millis = millis();
 
     // Turn LED 1 on
-    LED_1_LAT = 1;
+    LED_1_ON();
 
     // Wait for the first message
     while (!recieved_first_message) {
         if (millis() - last_millis > 5000) {
-            // Haven't received anything, try reset
+            // Haven't received anything, try resetting the gps
             LATC2 = 0;
             __delay_ms(100);
             LATC2 = 1;
@@ -125,6 +125,7 @@ static void __interrupt() interrupt_handler() {
     }
 
     // Timer0 has overflowed - update millis() function
+    // This happens approximately every 500us
     if (PIE3bits.TMR0IE == 1 && PIR3bits.TMR0IF == 1) {
         timer0_handle_interrupt();
         PIR3bits.TMR0IF = 0;
@@ -136,13 +137,13 @@ static void can_msg_handler(const can_msg_t *msg) {
     uint16_t msg_type = get_message_type(msg);
     switch (msg_type) {
         case MSG_LEDS_ON:
-            LED_1_LAT = 1;
-            LED_2_LAT = 1;
+            LED_1_ON();
+            LED_2_ON();
             break;
 
         case MSG_LEDS_OFF:
-            LED_1_LAT = 0;
-            LED_2_LAT = 0;
+            LED_1_OFF();
+            LED_2_OFF();
             break;
         default:
             // all the other ones - do nothing

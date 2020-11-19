@@ -142,7 +142,7 @@ void gps_handle_byte(uint8_t byte) {
                         state = P_STOP;
                         return;
                     } else {
-                        LED_2_LAT = 1;
+                        LED_2_ON();
                     }
                     break;
                 case P_TIMESTAMP:
@@ -210,10 +210,11 @@ void gps_handle_byte(uint8_t byte) {
                     parser.coord.dir = byte;
                     break;
                 case P_STOP:
-                    LED_2_LAT = 0;
+                    LED_2_OFF();
                     state = P_IDLE;
                     break;
-                case P_ERROR:
+                case P_ERROR: // Should be unreachable
+                    // E_CODING_FUCKUP
                     break;
                 default:
                     break;
