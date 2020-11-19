@@ -36,12 +36,15 @@ void uart_init(void) {
 
 void led_init(void) {
     TRISB1 = 0;
-    LATB1 = 0;
+    LED_1_OFF();
 
     TRISB2 = 0;
-    LATB2 = 0;
+    LED_2_OFF();
 }
 
 void led_1_heartbeat(void) {
-    LED_1_LAT ^= 1;
+    if(LATB1)
+        LED_1_OFF();
+    else
+        LED_1_ON();
 }

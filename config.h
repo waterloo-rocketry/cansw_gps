@@ -16,8 +16,8 @@ extern "C" {
 // 'C' source line config statements
 
 // CONFIG1L
-#pragma config FEXTOSC = OFF
-#pragma config RSTOSC = HFINTOSC_64MHZ
+#pragma config FEXTOSC = OFF    // Use internal oscillator
+#pragma config RSTOSC = HFINTOSC_64MHZ // HFFRQ = 64MHz, CDIV = 1:1. Frequency get's lowered in code during initialization.
 
 // CONFIG1H
 #pragma config CLKOUTEN = OFF   // Clock out Enable bit (CLKOUT function is disabled)

@@ -112,17 +112,6 @@ void reset_parser() {
 }
 
 void gps_handle_byte(uint8_t byte) {
-    /*
-    static char debug_msg[8];
-    static int debug_index = 0;
-    debug_msg[debug_index++] = byte;
-    if(debug_index >= 8) {
-        debug_index = 0;
-        can_msg_t msg_debug;
-        build_debug_printf((uint8_t *) debug_msg, &msg_debug);
-        txb_enqueue(&msg_debug);
-    }
-    */
 
     switch(byte) {
         case '$':
@@ -142,7 +131,7 @@ void gps_handle_byte(uint8_t byte) {
                         state = P_STOP;
                         return;
                     } else {
-                        LED_2_LAT = 1;
+                        LED_2_ON();
                     }
                     break;
                 case P_TIMESTAMP:
@@ -202,6 +191,8 @@ void gps_handle_byte(uint8_t byte) {
                     if (parser_index < sizeof(parser.qual.numsat))
                         parser.qual.numsat[parser_index++] = byte;
                     break;
+                case P_HDOP:
+                    break;
                 case P_ALTITUDE_ANTENNA:
                     if (parser_index < sizeof(parser.coord.msg))
                         parser.coord.msg[parser_index++] = byte;
@@ -210,12 +201,13 @@ void gps_handle_byte(uint8_t byte) {
                     parser.coord.dir = byte;
                     break;
                 case P_STOP:
-                    LED_2_LAT = 0;
+                    LED_2_OFF();
                     state = P_IDLE;
                     break;
-                case P_ERROR:
+                case P_ERROR: // Error state
                     break;
-                default:
+                default: // Should be unreachable
+                    // E_CODING_FUCKUP
                     break;
             }
         }
