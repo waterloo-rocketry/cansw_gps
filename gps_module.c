@@ -6,14 +6,11 @@
 #include "canlib/util/can_tx_buffer.h"
 
 #include "timer.h"
-#include <string.h>
 #include "gps_module.h"
 #include "gps_general.h"
 
-#include <stdlib.h>
-#include <string.h>
-
 #include <xc.h>
+#include <string.h>
 
 void gps_init(void) {
     // Set port C2 as output pin (~HWR)
@@ -46,21 +43,37 @@ size_t parser_index = 0;
 
 static enum PARSER_STATE state = P_IDLE;
 
-// converts string to whole number plus 2 decimal places
-void strtodec(char *str, int *whole, int *decimal) {
-    char *endptr;
-    *whole = strtol(str, &endptr, 10);
-    if (endptr[0] == '.')
-        *decimal = (int) (strtof(endptr, NULL) * 100);
-    else
-        *decimal = 0;
+// converts string to whole number plus 4 decimal places
+void strtodec(char *str, size_t len, int *whole, int *decimal) {
+
+    int decimal_place = 1000;
+
+    *whole = 0;
+    *decimal = 0;
+
+    char *current = str;
+    while(current < str + len && '0' <= *current && '9' >= *current) {
+        *whole = *whole*10 + (*current - '0');
+        current++;
+    }
+
+    if(current >= str + len || *current != '.')
+        return;
+
+    current++;
+
+    while(decimal_place > 0 && current < str + len && '0' <= *current && '9' >= *current) {
+        *decimal += decimal_place * (*current - '0');
+        decimal_place /= 10;
+        current++;
+    }
 }
 
 void assemble_can_msgs_utc(void) {
     can_msg_t msg_utc;
 
     int utc, dsec;
-    strtodec(parser.msg, &utc, &dsec);
+    strtodec(parser.msg, 10, &utc, &dsec);
 
     build_gps_time_msg(millis(), utc / 10000, utc / 100 % 100, utc % 100, dsec, &msg_utc);
     txb_enqueue(&msg_utc);
@@ -70,7 +83,7 @@ void assemble_can_msgs_lat(void) {
     can_msg_t msg_lat;
 
     int lat, dmin;
-    strtodec(parser.coord.msg, &lat, &dmin);
+    strtodec(parser.coord.msg, 10, &lat, &dmin);
 
     build_gps_lat_msg(millis(), lat / 100, lat % 100, dmin, parser.coord.dir, &msg_lat);
     txb_enqueue(&msg_lat);
@@ -80,7 +93,7 @@ void assemble_can_msgs_lon(void) {
     can_msg_t msg_lon;
 
     int lon, dmin;
-    strtodec(parser.coord.msg, &lon, &dmin);
+    strtodec(parser.coord.msg, 10, &lon, &dmin);
 
     build_gps_lon_msg(millis(), lon / 100, lon % 100, dmin, parser.coord.dir, &msg_lon);
     txb_enqueue(&msg_lon);
@@ -90,7 +103,7 @@ void assemble_can_msgs_alt(void) {
     can_msg_t msg_alt;
 
     int alt, dalt;
-    strtodec(parser.coord.msg, &alt, &dalt);
+    strtodec(parser.coord.msg, 10, &alt, &dalt);
 
     build_gps_alt_msg(millis(), alt, dalt, parser.coord.dir, &msg_alt);
     txb_enqueue(&msg_alt);
