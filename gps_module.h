@@ -23,7 +23,6 @@ enum PARSER_STATE {
     P_ALTITUDE_ANTENNA,
     P_ALTITUDE_UNITS,
     P_STOP,
-    P_ERROR,
 };
 
 void gps_init(void);

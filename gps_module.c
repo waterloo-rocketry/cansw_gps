@@ -217,10 +217,10 @@ void gps_handle_byte(uint8_t byte) {
                     LED_2_OFF();
                     state = P_IDLE;
                     break;
-                case P_ERROR: // Error state
-                    break;
                 default: // Should be unreachable
                     // E_CODING_FUCKUP
+                    LED_2_OFF();
+                    state = P_IDLE;
                     break;
             }
         }
