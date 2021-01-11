@@ -6,227 +6,221 @@
 #include "canlib/util/can_tx_buffer.h"
 
 #include "timer.h"
-#include <string.h>
 #include "gps_module.h"
 #include "gps_general.h"
 
 #include <xc.h>
+#include <string.h>
 
 void gps_init(void) {
-    //SET port C4 as output pin (WAKEUP) (This might not be needed during power_up, but I'll leave this here for reference later)
-    TRISC4 = 0;
-
-    //Set port C6 as output pin (RESET)
-    TRISC6 = 0;
-
-    //Set port C2 as output pin (ON_OFF)
+    // Set port C2 as output pin (~HWR)
     TRISC2 = 0;
 
-    // Write a 1 to port C4 (WAKEUP)
-    LATC4 = 1;
-    LATC2 = 0;
-    //Toggle C2 for first startup after power on
+    // Set C2 to high because it's active low
     LATC2 = 1;
-    __delay_ms(300);
-    LATC2 = 0;
-    __delay_ms(300);
-    for (int x = 0; x < 100; x++) {
-       //LATC2 = 1; 
-       __delay_ms(10);
-    }
-    
-    // Write a 1 to port C6 (RESET) Writing a 1 because active low
-    LATC6 = 1;
+
+    // Set C3 to input (FIX)
+    TRISC3 = 1;
+
+    // Set C4 to input (PPS)
+    TRISC4 = 1;
 }
 
 // message contents, stored locally
 //I've commented out the placeholders that I've been using
-static char msgType[5];
-static int msgTypeIndex;
-static char timestamp[9];
-static int timestamp_index;
-static char latitude[10];
-static int latitude_index;
-static char latdir;
-static char longitude[10];
-static int longitude_index;
-static char londir;
-static char qualind = 0;
-static char numsat[3];
-static int numsat_index;
-static char hdop[3];
-static int hdop_index;
-static char ANTALT[10];
-static int ANTALTIndex;
-static char ALTUNIT[2];
-static int ALTUNITIndex;
+static union {
+    char msg[10];
+    struct {
+        char msg[10];
+        char dir;
+    } coord;
+    struct {
+        char indicator;
+        char numsat[2];
+    } qual;
+} parser;
+size_t parser_index = 0;
 
 static enum PARSER_STATE state = P_IDLE;
 
-// assuming we only pass it base 10 digits, which should be true for this
-#define DIGIT(x) (x - '0')
+// converts string to whole number plus 4 decimal places
+void strtodec(char *str, size_t len, int *whole, int *decimal) {
+
+    int decimal_place = 1000;
+
+    *whole = 0;
+    *decimal = 0;
+
+    char *current = str;
+    while(current < str + len && '0' <= *current && '9' >= *current) {
+        *whole = *whole*10 + (*current - '0');
+        current++;
+    }
+
+    if(current >= str + len || *current != '.')
+        return;
+
+    current++;
+
+    while(decimal_place > 0 && current < str + len && '0' <= *current && '9' >= *current) {
+        *decimal += decimal_place * (*current - '0');
+        decimal_place /= 10;
+        current++;
+    }
+}
 
 void assemble_can_msgs_utc(void) {
     can_msg_t msg_utc;
 
-    // UTC format is hhmmss.ss
-    uint8_t utc_hours = DIGIT(timestamp[0]) * 10 + DIGIT(timestamp[1]);
-    uint8_t utc_mins = DIGIT(timestamp[2]) * 10 + DIGIT(timestamp[3]);
-    uint8_t utc_secs = DIGIT(timestamp[4]) * 10 + DIGIT(timestamp[5]);
-    // skip the period
-    uint8_t utc_dsecs = DIGIT(timestamp[7]) * 10 + DIGIT(timestamp[8]);
-    build_gps_time_msg(millis(), utc_hours, utc_mins, utc_secs, utc_dsecs, &msg_utc);
-    // copy message over to msg queue
+    int utc, dsec;
+    strtodec(parser.msg, 10, &utc, &dsec);
+
+    build_gps_time_msg(millis(), utc / 10000, utc / 100 % 100, utc % 100, dsec, &msg_utc);
     txb_enqueue(&msg_utc);
 }
 
 void assemble_can_msgs_lat(void) {
     can_msg_t msg_lat;
-    
-    // Latitude format is DDMM.MM (we ignore only take the first 2 decimals)
-    uint8_t lat_degree = DIGIT(latitude[0]) * 10 + DIGIT(latitude[1]);
-    uint8_t lat_minute = DIGIT(latitude[2]) * 10 + DIGIT(latitude[3]);
-    // We skip over the decimal point here
-    uint8_t lat_dminutes = DIGIT(latitude[5]) * 10 + DIGIT(latitude[6]);
-    build_gps_lat_msg(millis(), lat_degree, lat_minute, lat_dminutes, latdir, &msg_lat);
+
+    int lat, dmin;
+    strtodec(parser.coord.msg, 10, &lat, &dmin);
+
+    build_gps_lat_msg(millis(), lat / 100, lat % 100, dmin, parser.coord.dir, &msg_lat);
     txb_enqueue(&msg_lat);
 }
 
 void assemble_can_msgs_lon(void) {
     can_msg_t msg_lon;
-    
-    // Longitude format is DDDMM.MM (we ignore only take the first 2 decimals)
-    uint8_t lon_degree = DIGIT(longitude[0]) * 100 + DIGIT(longitude[1]) * 10 + DIGIT(longitude[2]);
-    uint8_t lon_minute = DIGIT(longitude[3]) * 10 + DIGIT(longitude[4]);
-    // We skip over the decimal point here
-    uint8_t lon_dminutes = DIGIT(longitude[6]) * 10 + DIGIT(longitude[7]);
-    build_gps_lon_msg(millis(), lon_degree, lon_minute, lon_dminutes, londir, &msg_lon);
+
+    int lon, dmin;
+    strtodec(parser.coord.msg, 10, &lon, &dmin);
+
+    build_gps_lon_msg(millis(), lon / 100, lon % 100, dmin, parser.coord.dir, &msg_lon);
     txb_enqueue(&msg_lon);
-}    
+}
 
 void assemble_can_msgs_alt(void) {
     can_msg_t msg_alt;
-    // Altitude format can either be AAA.D or AAAA.D depending on how high we are. Thus, we need to find the decimal position.
-    uint8_t decimal_place= 0;
-    for (int x = 0; x < 10; x++) {
-        if (ANTALT[x] == '.') {
-            decimal_place = x;
-        }
-    }
-    // Decimal_place can be either 3 or 4 (eg altitude < 1000m for 3 or <10000m for 4.
-    // We shouldn't reach 5, and we definitely won't hit 2)
-    if (decimal_place == 3) {
-        uint16_t altitude = DIGIT(ANTALT[0]) * 100 + DIGIT(ANTALT[1]) * 10 + DIGIT(ANTALT[2]);
-        uint8_t daltitude = DIGIT(ANTALT[4]);
-        build_gps_alt_msg(millis(), altitude, daltitude, ALTUNIT[0], &msg_alt);
-        txb_enqueue(&msg_alt);
-    } else if (decimal_place == 4) {
-        uint16_t altitude = DIGIT(ANTALT[0]) * 1000 + DIGIT(ANTALT[1]) * 100 + DIGIT(ANTALT[2]) * 10 + DIGIT(ANTALT[3]);
-        uint8_t daltitude = DIGIT(ANTALT[5]);
-        build_gps_alt_msg(millis(), altitude, daltitude, ALTUNIT[0], &msg_alt);
-        txb_enqueue(&msg_alt);
-    }
+
+    int alt, dalt;
+    strtodec(parser.coord.msg, 10, &alt, &dalt);
+
+    build_gps_alt_msg(millis(), alt, dalt, parser.coord.dir, &msg_alt);
+    txb_enqueue(&msg_alt);
 }
-    
+
 void assemble_can_msgs_info(void) {
     can_msg_t msg_info;
-    // Info format is currently number of satellites + quality
-    uint8_t num_sat = DIGIT(numsat[0]) * 10 + DIGIT(numsat[1]);
-    uint8_t quality = DIGIT(qualind);
-    build_gps_info_msg(millis(), num_sat, quality, &msg_info);
+
+    int numsat = strtol(parser.qual.numsat, NULL, 10);
+    int quality = parser.qual.indicator - '0';
+
+    build_gps_info_msg(millis(), numsat, quality, &msg_info);
     txb_enqueue(&msg_info);
 }
 
+void reset_parser() {
+    parser_index = 0;
+    memset(&parser, 0, sizeof(parser));
+}
+
 void gps_handle_byte(uint8_t byte) {
+
     switch(byte) {
         case '$':
-            LATB2 ^= 1;
+            // Start of message
             state = P_MSG_TYPE;
-            msgTypeIndex = 0;
-            timestamp_index = 0;
-            latitude_index = 0;
-            longitude_index = 0;
-            numsat_index = 0;
-            hdop_index = 0;
-            ANTALTIndex = 0;
-            ALTUNITIndex = 0;
+            reset_parser();
             break;
 
         case ',':
-            if (P_MSG_TYPE <= state && state < P_ERROR) {
-                   // apparently strcmp is being annoying
-                   if ((msgType[0] == 'G') && (msgType[1] == 'P')
-                            && (msgType[2] == 'G') && (msgType[3] == 'G')
-                            && (msgType[4] == 'A')) {
-                        //if we read a GPGGA signal, then the state machine carries on
-                        if (state == P_TIMESTAMP && *(timestamp) !=0 && *(latitude) != 0 && *(longitude) != 0 && qualind != 0 && *(ANTALT) != 0) {
-                            assemble_can_msgs_utc();
-                        } else if (state == P_LATITUDE_DIR_NS && *(latitude) != 0) {
-                            assemble_can_msgs_lat();
-                        } else if (state == P_LONGITUDE_DIR_EW && *(longitude) != 0) {
-                            assemble_can_msgs_lon();
-                        } else if (state == P_NUM_SATELLITES && *(latitude) != 0 && *(longitude) != 0 && qualind != 0 && *(ANTALT) != 0) {
-                            assemble_can_msgs_info();
-                        } else if (state == P_ALTITUDE_UNITS && *(ANTALT) != 0) {
-                            assemble_can_msgs_alt();
-                        }
-                        state++;
-                   } else {
-                        //if we don't read a GPGGA signal, then we wont care about the message for now
-                        state = P_IDLE;
-                   }
+            switch (state) {
+                case P_IDLE:
+                    // Not doing anything
+                    return;
+                case P_MSG_TYPE:
+                    if (strncmp(parser.msg, "GPGGA", 5) != 0) {
+                        // Not a GPGGA signal, then we don't care
+                        state = P_STOP;
+                        return;
+                    } else {
+                        LED_2_ON();
+                    }
+                    break;
+                case P_TIMESTAMP:
+                    if (parser.msg[0])
+                        assemble_can_msgs_utc();
+                    break;
+                case P_LATITUDE_DIR_NS:
+                    if (parser.coord.msg[0] && parser.coord.dir)
+                        assemble_can_msgs_lat();
+                    break;
+                case P_LONGITUDE_DIR_EW:
+                    if (parser.coord.msg[0] && parser.coord.dir)
+                        assemble_can_msgs_lon();
+                    break;
+                case P_NUM_SATELLITES:
+                    if (parser.qual.indicator && parser.qual.numsat[0])
+                        assemble_can_msgs_info();
+                    break;
+                case P_ALTITUDE_UNITS:
+                    if (parser.coord.msg[0] && parser.coord.dir)
+                        assemble_can_msgs_alt();
+                    break;
+                default:
+                    // Don't have full message yet, don't reset parser
+                    state++;
+                    return;
             }
+
+            reset_parser();
+            state++;
+
             break;
 
         // Parse message fields
         default: {
             switch(state) {
-                case P_IDLE:    //idle do nothing
-                    break;
-                case P_START:   //start, for debugging purposes
-                    // FIXME: begin new GPS message here
+                case P_IDLE:
                     break;
                 case P_MSG_TYPE:
-                    msgType[msgTypeIndex++] = byte;
-                    break;
                 case P_TIMESTAMP:
-                    timestamp[timestamp_index++] = byte;
+                    if (parser_index < sizeof(parser.msg))
+                        parser.msg[parser_index++] = byte;
                     break;
                 case P_LATITUDE:
-                    latitude[latitude_index++] = byte;
+                case P_LONGITUDE:
+                    if (parser_index < sizeof(parser.coord.msg))
+                        parser.coord.msg[parser_index++] = byte;
                     break;
                 case P_LATITUDE_DIR_NS:
-                    latdir = byte;
-                    break;
-                case P_LONGITUDE:
-                    longitude[longitude_index++] = byte;
-                    break;
                 case P_LONGITUDE_DIR_EW:
-                    londir = byte;
+                    parser.coord.dir = byte;
                     break;
                 case P_QUALITY:
-                    qualind = byte;
+                    parser.qual.indicator = byte;
                     break;
                 case P_NUM_SATELLITES:
-                    numsat[numsat_index++] = byte;
+                    if (parser_index < sizeof(parser.qual.numsat))
+                        parser.qual.numsat[parser_index++] = byte;
                     break;
                 case P_HDOP:
-                    hdop[hdop_index++] = byte;
                     break;
                 case P_ALTITUDE_ANTENNA:
-                    ANTALT[ANTALTIndex++] = byte;
+                    if (parser_index < sizeof(parser.coord.msg))
+                        parser.coord.msg[parser_index++] = byte;
                     break;
                 case P_ALTITUDE_UNITS:
-                    ALTUNIT[ALTUNITIndex++] = byte;
+                    parser.coord.dir = byte;
                     break;
-                case P_STOP:    //STOP, wait for next
-                    LATB3 ^= 1;
+                case P_STOP:
+                    LED_2_OFF();
                     state = P_IDLE;
                     break;
-                case P_ERROR:   //ERROR state
-                    break;
-                default:        // Should be unreachable
+                default: // Should be unreachable
                     // E_CODING_FUCKUP
+                    LED_2_OFF();
+                    state = P_IDLE;
                     break;
             }
         }

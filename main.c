@@ -24,8 +24,13 @@ static void can_msg_handler(const can_msg_t *msg);
 static void send_status_ok(void);
 static void send_status_error_module(void);
 
+static volatile uint8_t recieved_first_message = 0;
+
 int main(void) {
-    __delay_ms(8000); //Debugging purposes.
+
+    // Set frequency to be 48 MHZ
+    OSCFRQbits.FRQ = 0b0111;
+
     ADCC_Initialize();
     FVR_Initialize();
 
@@ -47,27 +52,36 @@ int main(void) {
     CANRXPPS = 0x11;
 
     // set up CAN module
-    can_timing_t can_setup;
-    can_generate_timing_params(_XTAL_FREQ, &can_setup);
+    can_timing_t can_setup = {
+        .brp      = 47,
+        .sjw      =  3,
+        .btlmode  =  1,
+        .sam      =  0,
+        .seg1ph   =  4,
+        .prseg    =  0,
+        .seg2ph   =  4
+    };
     can_init(&can_setup, can_msg_handler);
     txb_init(tx_pool, sizeof(tx_pool), can_send, can_send_rdy);
 
     uint32_t last_millis = millis();
 
-    __delay_ms(300);
+    // Turn LED 1 on
+    LED_1_ON();
 
+    // Wait for the first message
     while (!recieved_first_message) {
-        //If we haven't received anything, toggle ON_OFF.
-        LATC2 = 1;
-        __delay_ms(300);
-        LATC2 = 0;
-        __delay_ms(300);
-        if (++num_toggle > 10) {
-            //we've been toggling for more than 10 times, something is definitely wrong.
+        if (millis() - last_millis > 5000) {
+            // Haven't received anything, try resetting the gps
+            LATC2 = 0;
+            __delay_ms(100);
+            LATC2 = 1;
+            __delay_ms(100);
+
             send_status_error_module();
+            last_millis = millis();
         }
     }
-    LATB3 = 0;
 
     while(1) {
         if (millis() - last_millis > MAX_LOOP_TIME_DIFF_ms) {
@@ -81,28 +95,32 @@ int main(void) {
         }
         txb_heartbeat();
     }
+
     return (EXIT_SUCCESS);
 }
 
 static void __interrupt() interrupt_handler() {
     if (PIR5) {
-        //Handle CAN
+        // Handle CAN
         can_handle_interrupt();
     }
 
-    // deal with incoming UART bytes
-    if (PIR3bits.U1RXIF) {
-        //Handle GPS Interrupt
-        if (U1ERRIR) {
-            //error
-            U1ERRIR = 0; //ignore all errors
+    // UART message
+    if (PIR3bits.U1RXIF == 1) {
+        recieved_first_message = 1;
+
+        if (U1ERRIRbits.FERIF) {
+            // UART frame error
         }
-        if (recieved_first_message == 0) {
-            //we received something from uart for the first time.
-            recieved_first_message = 1;
+
+        if (U1ERRIRbits.RXFOIF) {
+            // UART overflowed
+            U1ERRIRbits.RXFOIF = 0;
         }
-        uint8_t byte = U1RXB;
-        gps_handle_byte(byte);
+
+        gps_handle_byte(U1RXB);
+
+        PIR3bits.U1RXIF = 0;
     }
 
     // Timer0 has overflowed - update millis() function
@@ -116,32 +134,18 @@ static void __interrupt() interrupt_handler() {
 // This is called from within can_handle_interrupt()
 static void can_msg_handler(const can_msg_t *msg) {
     uint16_t msg_type = get_message_type(msg);
-    int cmd_type = -1;
     switch (msg_type) {
-        case MSG_GENERAL_CMD:
-            // toggle ON_OFF to turn off module properly
-            cmd_type = get_general_cmd_type(msg);
-            if (cmd_type == BUS_DOWN_WARNING) {
-                LATC2 = 1;
-                __delay_ms(300);
-                LATC2 = 0;
-                __delay_ms(300);
-            }
-            break;
-
         case MSG_LEDS_ON:
             LED_1_ON();
             LED_2_ON();
-            LED_3_ON();
             break;
 
         case MSG_LEDS_OFF:
             LED_1_OFF();
             LED_2_OFF();
-            LED_3_OFF();
             break;
-        // all the other ones - do nothing
         default:
+            // all the other ones - do nothing
             break;
     }
 }

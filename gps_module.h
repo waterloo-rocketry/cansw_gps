@@ -3,29 +3,26 @@
 
 #include <stdint.h>
 
-uint8_t recieved_first_message = 0;
-int num_toggle = 0;
 // Order matters for this enum, matches the order of GPGGA fields
 enum PARSER_STATE {
     P_IDLE = 0,
-    P_START,
     P_MSG_TYPE,
     P_TIMESTAMP,
     P_LATITUDE,
     P_LATITUDE_DIR_NS,
     P_LONGITUDE,
     P_LONGITUDE_DIR_EW,
-    P_QUALITY,            // Quality Indicator:
+    P_QUALITY,          // Quality Indicator:
                         // 1 = Uncorrected coordinate
                         // 2 = Differentially correct coordinate (e.g., WAAS, DGPS)
                         // 4 = RTK Fix coordinate (centimeter precision)
                         // 5 = RTK Float (decimeter precision.
+                        // 6 = Dead reckoning mode
     P_NUM_SATELLITES,
-    P_HDOP,               // (horizontal dilution of precision)
+    P_HDOP,             // horizontal dilution of precision
     P_ALTITUDE_ANTENNA,
     P_ALTITUDE_UNITS,
     P_STOP,
-    P_ERROR,
 };
 
 void gps_init(void);
