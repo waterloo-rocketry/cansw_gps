@@ -45,18 +45,16 @@ class Info:
     def filled(self):
         return (
             self.timestamp is not None and
-            #self.alt is not None and
+            self.alt is not None and
             self.lat is not None and
             self.lon is not None
         )
 
     def print_header(self):
-        #print(f'timestamp, alt, lat, lon')
-        print(f'timestamp, lat, lon')
+        print(f'timestamp, alt, lat, lon')
 
     def print(self):
-        #print(f'{self.timestamp}, {self.alt}, {self.lat}, {self.lon}')
-        print(f'{self.timestamp}, {self.lat}, {self.lon}')
+        print(f'{self.timestamp}, {self.alt}, {self.lat}, {self.lon}')
 
 info = Info()
 info.print_header()

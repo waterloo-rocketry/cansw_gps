@@ -26,8 +26,6 @@ void gps_init(void) {
     TRISC4 = 1;
 }
 
-// message contents, stored locally
-//I've commented out the placeholders that I've been using
 static union {
     char msg[10];
     struct {
@@ -76,7 +74,16 @@ void assemble_can_msgs_utc(void) {
     uint16_t dsec;
     strtodec(parser.msg, 10, &utc, &dsec);
 
-    build_gps_time_msg(millis(), (uint8_t) (utc / 10000 % 100), (uint8_t) (utc / 100 % 100), (uint8_t) (utc % 100), (uint8_t) (dsec / 100), &msg_utc);
+    // message format: hhmmss.sss
+    // strtodec returns 4 digits for dsec, so we divide it by 100 to make it fit within a byte.
+    build_gps_time_msg(
+        millis(),
+        (uint8_t) (utc / 10000 % 100),
+        (uint8_t) (utc / 100 % 100),
+        (uint8_t) (utc % 100),
+        (uint8_t) (dsec / 100),
+        &msg_utc
+    );
     txb_enqueue(&msg_utc);
 }
 
@@ -87,6 +94,7 @@ void assemble_can_msgs_lat(void) {
     uint16_t dmin;
     strtodec(parser.coord.msg, 10, &lat, &dmin);
 
+    // messge format: ddmm.mmmm
     build_gps_lat_msg(millis(), (uint8_t) (lat / 100), (uint8_t) (lat % 100), (uint16_t) dmin, parser.coord.dir, &msg_lat);
     txb_enqueue(&msg_lat);
 }
@@ -98,6 +106,7 @@ void assemble_can_msgs_lon(void) {
     uint16_t dmin;
     strtodec(parser.coord.msg, 10, &lon, &dmin);
 
+    // message format: dddmm.mmmm
     build_gps_lon_msg(millis(), (uint8_t) (lon / 100), (uint8_t) (lon % 100), (uint16_t) dmin, parser.coord.dir, &msg_lon);
     txb_enqueue(&msg_lon);
 }
@@ -109,6 +118,7 @@ void assemble_can_msgs_alt(void) {
     uint16_t dalt;
     strtodec(parser.coord.msg, 10, &alt, &dalt);
 
+    // message format: just a normal decimal number, we divide decimal part by 100 to make it fit within a byte
     build_gps_alt_msg(millis(), (uint16_t) alt, (uint8_t) (dalt / 100), parser.coord.dir, &msg_alt);
     txb_enqueue(&msg_alt);
 }
