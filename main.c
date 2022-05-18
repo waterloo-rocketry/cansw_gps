@@ -134,6 +134,8 @@ static void __interrupt() interrupt_handler() {
 // This is called from within can_handle_interrupt()
 static void can_msg_handler(const can_msg_t *msg) {
     uint16_t msg_type = get_message_type(msg);
+    int dest_id = -1;
+
     switch (msg_type) {
         case MSG_LEDS_ON:
             LED_1_ON();
@@ -143,6 +145,13 @@ static void can_msg_handler(const can_msg_t *msg) {
         case MSG_LEDS_OFF:
             LED_1_OFF();
             LED_2_OFF();
+            break;
+
+        case MSG_RESET_CMD:
+            dest_id = get_reset_board_id(msg);
+            if (dest_id == BOARD_UNIQUE_ID || dest_id == 0 ){
+                RESET();
+            }
             break;
         default:
             // all the other ones - do nothing
