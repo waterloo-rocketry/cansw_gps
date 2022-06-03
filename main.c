@@ -135,8 +135,16 @@ static void __interrupt() interrupt_handler() {
 static void can_msg_handler(const can_msg_t *msg) {
     uint16_t msg_type = get_message_type(msg);
     int dest_id = -1;
+    int cmd_type = -1;
 
     switch (msg_type) {
+        case MSG_GENERAL_CMD:
+            cmd_type = get_general_cmd_type(msg);
+            if (cmd_type == BUS_DOWN_WARNING) {
+                // empty handler
+            }
+            break;
+        
         case MSG_LEDS_ON:
             LED_1_ON();
             LED_2_ON();
