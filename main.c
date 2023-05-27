@@ -25,6 +25,7 @@ static void send_status_ok(void);
 static void send_status_error_module(void);
 
 static volatile uint8_t recieved_first_message = 0;
+volatile uint32_t last_message_millis = 0;
 
 int main(void) {
 
@@ -71,6 +72,16 @@ int main(void) {
 
     // Wait for the first message
     while (!recieved_first_message) {
+        CLRWDT(); // feed the watchdog, which is set for 256ms
+        
+        uint32_t dt = millis() - last_message_millis;
+        // prevent race condition where last_message_millis is greater than millis
+        // by checking for overflow
+        if (dt > MAX_BUS_DEAD_TIME_ms && dt < (1 << 15)) {
+            // We've got too long without seeing a valid CAN message (including one of ours)
+            RESET();
+        }
+        
         if (millis() - last_millis > 5000) {
             // Haven't received anything, try resetting the gps
             LATC2 = 0;
@@ -84,6 +95,16 @@ int main(void) {
     }
 
     while(1) {
+        CLRWDT(); // feed the watchdog, which is set for 256ms
+        
+        uint32_t dt = millis() - last_message_millis;
+        // prevent race condition where last_message_millis is greater than millis
+        // by checking for overflow
+        if (dt > MAX_BUS_DEAD_TIME_ms && dt < (1 << 15)) {
+            // We've got too long without seeing a valid CAN message (including one of ours)
+            RESET();
+        }
+        
         if (millis() - last_millis > MAX_LOOP_TIME_DIFF_ms) {
             bool status_ok = check_bus_current_error();
             if (status_ok) {
@@ -133,6 +154,8 @@ static void __interrupt() interrupt_handler() {
 
 // This is called from within can_handle_interrupt()
 static void can_msg_handler(const can_msg_t *msg) {
+    last_message_millis = millis();
+    
     uint16_t msg_type = get_message_type(msg);
     int dest_id = -1;
 
