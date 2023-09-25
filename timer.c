@@ -19,12 +19,15 @@
 #define MILLIS_REMAINDER 64
 #define MILLIS_INCREMENT_CAP 125
 
- static uint32_t millis_counter = 0;
+volatile static uint32_t millis_counter = 0;
 
- uint32_t millis(void) {
-    return millis_counter;
+uint32_t millis(void) {
+    INTCON0bits.GIE = 0;
+    uint32_t res = millis_counter;
+    INTCON0bits.GIE = 1;
+    return res;
 }
-
+ 
 void timer0_init(void) {
     PIE3bits.TMR0IE = 1;    //enable timer 0 interrupt
 
@@ -40,7 +43,7 @@ void timer0_init(void) {
      //enable the module
     T0CON0bits.EN = 1;
 }
-
+ 
 /*
  * Based on Bresenham's algorithm and described here: http://romanblack.com/one_sec.htm
  */

@@ -24,7 +24,8 @@ static void can_msg_handler(const can_msg_t *msg);
 static void send_status_ok(void);
 static void send_status_error_module(void);
 
-static volatile uint8_t recieved_first_message = 0;
+static volatile bool recieved_first_message = false;
+static volatile bool seen_can_message = false;
 
 int main(void) {
 
@@ -65,12 +66,25 @@ int main(void) {
     txb_init(tx_pool, sizeof(tx_pool), can_send, can_send_rdy);
 
     uint32_t last_millis = millis();
+    uint32_t last_message_millis = millis();
 
     // Turn LED 1 on
     LED_1_ON();
 
     // Wait for the first message
     while (!recieved_first_message) {
+        CLRWDT(); // feed the watchdog, which is set for 256ms
+        
+        if (seen_can_message) {
+            seen_can_message = false;
+            last_message_millis = millis();
+        }
+        
+        if (millis() - last_message_millis > MAX_BUS_DEAD_TIME_ms) {
+            // We've got too long without seeing a valid CAN message (including one of ours)
+            RESET();
+        }
+        
         if (millis() - last_millis > 5000) {
             // Haven't received anything, try resetting the gps
             LATC2 = 0;
@@ -84,6 +98,18 @@ int main(void) {
     }
 
     while(1) {
+        CLRWDT(); // feed the watchdog, which is set for 256ms
+        
+        if (seen_can_message) {
+            seen_can_message = false;
+            last_message_millis = millis();
+        }
+        
+        if (millis() - last_message_millis > MAX_BUS_DEAD_TIME_ms) {
+            // We've got too long without seeing a valid CAN message (including one of ours)
+            RESET();
+        }
+        
         if (millis() - last_millis > MAX_LOOP_TIME_DIFF_ms) {
             bool status_ok = check_bus_current_error();
             if (status_ok) {
@@ -107,7 +133,7 @@ static void __interrupt() interrupt_handler() {
 
     // UART message
     if (PIR3bits.U1RXIF == 1) {
-        recieved_first_message = 1;
+        recieved_first_message = true;
 
         if (U1ERRIRbits.FERIF) {
             // UART frame error
@@ -133,6 +159,8 @@ static void __interrupt() interrupt_handler() {
 
 // This is called from within can_handle_interrupt()
 static void can_msg_handler(const can_msg_t *msg) {
+    seen_can_message = true;
+    
     uint16_t msg_type = get_message_type(msg);
     int dest_id = -1;
 
