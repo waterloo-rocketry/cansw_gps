@@ -53,7 +53,7 @@ int main(void) {
 
     // set up CAN module
     can_timing_t can_setup = {
-        .brp      = 47,
+        .brp      =  7,
         .sjw      =  3,
         .btlmode  =  1,
         .sam      =  0,
