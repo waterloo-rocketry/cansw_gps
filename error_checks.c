@@ -27,7 +27,7 @@ bool check_bus_current_error(void){
         curr_data[1] = (curr_draw_mA >> 0) & 0xff;
 
         can_msg_t error_msg;
-        build_board_stat_msg(timestamp, E_BUS_OVER_CURRENT, curr_data, 2, &error_msg);
+        build_board_stat_msg(timestamp, E_5V_OVER_CURRENT, curr_data, 2, &error_msg);
         txb_enqueue(&error_msg);
         return false;
     }
