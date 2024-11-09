@@ -12,6 +12,56 @@
 #include <xc.h>
 #include <string.h>
 
+// Order matters for this enum, matches the order of GPGGA fields
+typedef enum {
+    P_IDLE = 0,
+    P_MSG_TYPE,
+    P_TIMESTAMP,
+    P_LATITUDE,
+    P_LATITUDE_DIR_NS,
+    P_LONGITUDE,
+    P_LONGITUDE_DIR_EW,
+    P_QUALITY,          // Quality Indicator:
+                        // 1 = Uncorrected coordinate
+                        // 2 = Differentially correct coordinate (e.g., WAAS, DGPS)
+                        // 4 = RTK Fix coordinate (centimeter precision)
+                        // 5 = RTK Float (decimeter precision.
+                        // 6 = Dead reckoning mode
+    P_NUM_SATELLITES,
+    P_HDOP,             // horizontal dilution of precision
+    P_ALTITUDE,
+    P_ALTITUDE_UNITS,
+    P_UNDULATION,       // geoid-to-ellipsoid separation
+    P_UNDULATION_UNITS,
+    P_AGE,
+    P_DIFF_REF_ID,
+    P_CHECKSUM,
+    P_STOP,
+} parser_state;
+
+typedef struct {
+    char msg[10];
+    char dir;
+} parser_coord;
+
+typedef struct {
+    char indicator;
+    char numsat[2];
+} parser_qual;
+
+static struct {
+    parser_state state;
+    uint8_t checksum;
+    size_t index;
+    char msg_type[5];
+    char utc[10];
+    parser_coord lat;
+    parser_coord lon;
+    parser_qual qual;
+    parser_coord alt;
+    char exp_checksum[2];
+} parser;
+
 void gps_init(void) {
     // Set port C2 as output pin (~HWR)
     TRISC2 = 0;
@@ -25,21 +75,6 @@ void gps_init(void) {
     // Set C4 to input (PPS)
     TRISC4 = 1;
 }
-
-static union {
-    char msg[10];
-    struct {
-        char msg[10];
-        char dir;
-    } coord;
-    struct {
-        char indicator;
-        char numsat[2];
-    } qual;
-} parser;
-size_t parser_index = 0;
-
-static enum PARSER_STATE state = P_IDLE;
 
 // converts string to whole number plus 4 decimal places
 void strtodec(char *str, size_t len, uint32_t *whole, uint16_t *decimal) {
@@ -67,17 +102,28 @@ void strtodec(char *str, size_t len, uint32_t *whole, uint16_t *decimal) {
     }
 }
 
-void assemble_can_msgs_utc(void) {
+// converts a hex char to integer
+uint8_t hextoint(char hex) {
+    if('0' <= hex && hex <= '9')
+        return hex - '0';
+    if('a' <= hex && hex <= 'f')
+        return hex - 'a' + 10;
+    if('A' <= hex && hex <= 'F')
+        return hex - 'A' + 10;
+    return 0;
+}
+
+void enqueue_can_msgs_utc(uint32_t timestamp) {
     can_msg_t msg_utc;
 
     uint32_t utc;
     uint16_t dsec;
-    strtodec(parser.msg, 10, &utc, &dsec);
+    strtodec(parser.utc, 10, &utc, &dsec);
 
     // message format: hhmmss.sss
     // strtodec returns 4 digits for dsec, so we divide it by 100 to make it fit within a byte.
     build_gps_time_msg(
-        millis(),
+        timestamp,
         (uint8_t) (utc / 10000 % 100),
         (uint8_t) (utc / 100 % 100),
         (uint8_t) (utc % 100),
@@ -87,156 +133,186 @@ void assemble_can_msgs_utc(void) {
     txb_enqueue(&msg_utc);
 }
 
-void assemble_can_msgs_lat(void) {
+void enqueue_can_msgs_lat(uint32_t timestamp) {
     can_msg_t msg_lat;
 
     uint32_t lat;
     uint16_t dmin;
-    strtodec(parser.coord.msg, 10, &lat, &dmin);
+    strtodec(parser.lat.msg, 10, &lat, &dmin);
 
     // messge format: ddmm.mmmm
-    build_gps_lat_msg(millis(), (uint8_t) (lat / 100), (uint8_t) (lat % 100), (uint16_t) dmin, parser.coord.dir, &msg_lat);
+    build_gps_lat_msg(
+        timestamp,
+        (uint8_t) (lat / 100),
+        (uint8_t) (lat % 100),
+        (uint16_t) dmin, parser.lat.dir,
+        &msg_lat
+    );
     txb_enqueue(&msg_lat);
 }
 
-void assemble_can_msgs_lon(void) {
+void enqueue_can_msgs_lon(uint32_t timestamp) {
     can_msg_t msg_lon;
 
     uint32_t lon;
     uint16_t dmin;
-    strtodec(parser.coord.msg, 10, &lon, &dmin);
+    strtodec(parser.lon.msg, 10, &lon, &dmin);
 
     // message format: dddmm.mmmm
-    build_gps_lon_msg(millis(), (uint8_t) (lon / 100), (uint8_t) (lon % 100), (uint16_t) dmin, parser.coord.dir, &msg_lon);
+    build_gps_lon_msg(
+        timestamp,
+        (uint8_t) (lon / 100),
+        (uint8_t) (lon % 100),
+        (uint16_t) dmin,
+        parser.lon.dir,
+        &msg_lon
+    );
     txb_enqueue(&msg_lon);
 }
 
-void assemble_can_msgs_alt(void) {
+void enqueue_can_msgs_alt(uint32_t timestamp) {
     can_msg_t msg_alt;
 
     uint32_t alt;
     uint16_t dalt;
-    strtodec(parser.coord.msg, 10, &alt, &dalt);
+    strtodec(parser.alt.msg, 10, &alt, &dalt);
 
     // message format: just a normal decimal number, we divide decimal part by 100 to make it fit within a byte
-    build_gps_alt_msg(millis(), (uint16_t) alt, (uint8_t) (dalt / 100), parser.coord.dir, &msg_alt);
+    build_gps_alt_msg(timestamp, (uint16_t) alt, (uint8_t) (dalt / 100), parser.alt.dir, &msg_alt);
     txb_enqueue(&msg_alt);
 }
 
-void assemble_can_msgs_info(void) {
+void enqueue_can_msgs_info(uint32_t timestamp) {
     can_msg_t msg_info;
 
     uint8_t numsat = (uint8_t) strtol(parser.qual.numsat, NULL, 10);
     uint8_t quality = parser.qual.indicator - '0';
 
-    build_gps_info_msg(millis(), numsat, quality, &msg_info);
+    build_gps_info_msg(timestamp, numsat, quality, &msg_info);
     txb_enqueue(&msg_info);
 }
 
-void reset_parser() {
-    parser_index = 0;
+void reset_parser(void) {
     memset(&parser, 0, sizeof(parser));
 }
 
 void gps_handle_byte(uint8_t byte) {
-
     switch(byte) {
         case '$':
             // Start of message
-            state = P_MSG_TYPE;
             reset_parser();
+            parser.state = P_MSG_TYPE;
             break;
 
         case ',':
-            switch (state) {
-                case P_IDLE:
-                    // Not doing anything
+            // Field separater
+            if(parser.state == P_IDLE) break;
+            if(parser.state == P_MSG_TYPE) {
+                if (strncmp(parser.msg_type, "GPGGA", 5) != 0) {
+                    // Not a GPGGA signal, then we don't care
+                    parser.state = P_STOP;
                     return;
-                case P_MSG_TYPE:
-                    if (strncmp(parser.msg, "GPGGA", 5) != 0) {
-                        // Not a GPGGA signal, then we don't care
-                        state = P_STOP;
-                        return;
-                    } else {
-                        LED_2_ON();
-                    }
-                    break;
-                case P_TIMESTAMP:
-                    if (parser.msg[0])
-                        assemble_can_msgs_utc();
-                    break;
-                case P_LATITUDE_DIR_NS:
-                    if (parser.coord.msg[0] && parser.coord.dir)
-                        assemble_can_msgs_lat();
-                    break;
-                case P_LONGITUDE_DIR_EW:
-                    if (parser.coord.msg[0] && parser.coord.dir)
-                        assemble_can_msgs_lon();
-                    break;
-                case P_NUM_SATELLITES:
-                    if (parser.qual.indicator && parser.qual.numsat[0])
-                        assemble_can_msgs_info();
-                    break;
-                case P_ALTITUDE_UNITS:
-                    if (parser.coord.msg[0] && parser.coord.dir)
-                        assemble_can_msgs_alt();
-                    break;
-                default:
-                    // Don't have full message yet, don't reset parser
-                    state++;
-                    return;
+                } else {
+                    LED_2_ON();
+                }
             }
 
-            reset_parser();
-            state++;
+            parser.state++;
+            parser.index = 0;
+            parser.checksum ^= byte;
 
             break;
 
-        // Parse message fields
+        case '*':
+            // Checksum indicator
+            if(parser.state == P_IDLE) break;
+            parser.state = P_CHECKSUM;
+            parser.index = 0;
+            break;
+
+        case '\r':
+        case '\n': {
+            // End of message
+            if(parser.state == P_CHECKSUM) {
+                uint8_t exp_checksum = (hextoint(parser.exp_checksum[0]) << 4) | hextoint(parser.exp_checksum[1]);
+                if(parser.checksum == exp_checksum) {
+                    uint32_t timestamp = millis();
+                    enqueue_can_msgs_utc(timestamp);
+                    enqueue_can_msgs_lat(timestamp);
+                    enqueue_can_msgs_lon(timestamp);
+                    enqueue_can_msgs_info(timestamp);
+                    enqueue_can_msgs_alt(timestamp);
+                }
+            }
+
+            parser.state = P_STOP;
+            break;
+        }
+
         default: {
-            switch(state) {
+            // help macro to safely add byte to parser message
+            #define APPEND_PARSER_MESSAGE(msg, byte) \
+                do { \
+                    if (parser.index < sizeof(msg)) \
+                        msg[parser.index++] = byte; \
+                } while(0)
+
+            // Parse message fields
+            switch(parser.state) {
                 case P_IDLE:
                     break;
                 case P_MSG_TYPE:
+                    APPEND_PARSER_MESSAGE(parser.msg_type, byte);
+                    break;
                 case P_TIMESTAMP:
-                    if (parser_index < sizeof(parser.msg))
-                        parser.msg[parser_index++] = byte;
+                    APPEND_PARSER_MESSAGE(parser.utc, byte);
                     break;
                 case P_LATITUDE:
+                    APPEND_PARSER_MESSAGE(parser.lat.msg, byte);
+                    break;
                 case P_LONGITUDE:
-                    if (parser_index < sizeof(parser.coord.msg))
-                        parser.coord.msg[parser_index++] = byte;
+                    APPEND_PARSER_MESSAGE(parser.lon.msg, byte);
                     break;
                 case P_LATITUDE_DIR_NS:
+                    parser.lat.dir = byte;
+                    break;
                 case P_LONGITUDE_DIR_EW:
-                    parser.coord.dir = byte;
+                    parser.lon.dir = byte;
                     break;
                 case P_QUALITY:
                     parser.qual.indicator = byte;
                     break;
                 case P_NUM_SATELLITES:
-                    if (parser_index < sizeof(parser.qual.numsat))
-                        parser.qual.numsat[parser_index++] = byte;
+                    APPEND_PARSER_MESSAGE(parser.qual.numsat, byte);
                     break;
                 case P_HDOP:
                     break;
-                case P_ALTITUDE_ANTENNA:
-                    if (parser_index < sizeof(parser.coord.msg))
-                        parser.coord.msg[parser_index++] = byte;
+                case P_ALTITUDE:
+                    APPEND_PARSER_MESSAGE(parser.alt.msg, byte);
                     break;
                 case P_ALTITUDE_UNITS:
-                    parser.coord.dir = byte;
+                    parser.alt.dir = byte;
+                    break;
+                case P_UNDULATION:
+                case P_UNDULATION_UNITS:
+                case P_AGE:
+                case P_DIFF_REF_ID:
+                    break;
+                case P_CHECKSUM:
+                    APPEND_PARSER_MESSAGE(parser.exp_checksum, byte);
                     break;
                 case P_STOP:
+                default:
                     LED_2_OFF();
-                    state = P_IDLE;
-                    break;
-                default: // Should be unreachable
-                    // E_CODING_FUCKUP
-                    LED_2_OFF();
-                    state = P_IDLE;
+                    parser.state = P_IDLE;
                     break;
             }
+
+            if(parser.state != P_CHECKSUM) {
+                parser.checksum ^= byte;
+            }
+
+            break;
         }
     }
 }
