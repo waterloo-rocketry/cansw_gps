@@ -1,9 +1,4 @@
-#include "canlib/can.h"
-#include "canlib/can_common.h"
-#include "canlib/pic18f26k83/pic18f26k83_can.h"
-#include "canlib/message_types.h"
-#include "canlib/util/timing_util.h"
-#include "canlib/util/can_tx_buffer.h"
+#include "canlib/canlib.h"
 
 #include "timer.h"
 #include "gps_module.h"
@@ -123,6 +118,7 @@ void enqueue_can_msgs_utc(uint32_t timestamp) {
     // message format: hhmmss.sss
     // strtodec returns 4 digits for dsec, so we divide it by 100 to make it fit within a byte.
     build_gps_time_msg(
+        PRIO_HIGH,
         timestamp,
         (uint8_t) (utc / 10000 % 100),
         (uint8_t) (utc / 100 % 100),
@@ -142,6 +138,7 @@ void enqueue_can_msgs_lat(uint32_t timestamp) {
 
     // messge format: ddmm.mmmm
     build_gps_lat_msg(
+        PRIO_HIGH,
         timestamp,
         (uint8_t) (lat / 100),
         (uint8_t) (lat % 100),
@@ -160,6 +157,7 @@ void enqueue_can_msgs_lon(uint32_t timestamp) {
 
     // message format: dddmm.mmmm
     build_gps_lon_msg(
+        PRIO_HIGH,
         timestamp,
         (uint8_t) (lon / 100),
         (uint8_t) (lon % 100),
@@ -178,7 +176,7 @@ void enqueue_can_msgs_alt(uint32_t timestamp) {
     strtodec(parser.alt.msg, 10, &alt, &dalt);
 
     // message format: just a normal decimal number, we divide decimal part by 100 to make it fit within a byte
-    build_gps_alt_msg(timestamp, (uint16_t) alt, (uint8_t) (dalt / 100), parser.alt.dir, &msg_alt);
+    build_gps_alt_msg(PRIO_HIGH, millis(), (uint16_t) alt, (uint8_t) (dalt / 100), parser.alt.dir, &msg_alt);
     txb_enqueue(&msg_alt);
 }
 
@@ -188,7 +186,7 @@ void enqueue_can_msgs_info(uint32_t timestamp) {
     uint8_t numsat = (uint8_t) strtol(parser.qual.numsat, NULL, 10);
     uint8_t quality = parser.qual.indicator - '0';
 
-    build_gps_info_msg(timestamp, numsat, quality, &msg_info);
+    build_gps_info_msg(PRIO_HIGH, timestamp, numsat, quality, &msg_info);
     txb_enqueue(&msg_info);
 }
 

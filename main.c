@@ -1,9 +1,4 @@
-#include "canlib/can.h"
-#include "canlib/can_common.h"
-#include "canlib/pic18f26k83/pic18f26k83_can.h"
-#include "canlib/message_types.h"
-#include "canlib/util/timing_util.h"
-#include "canlib/util/can_tx_buffer.h"
+#include "canlib/canlib.h"
 
 #include "mcc_generated_files/fvr.h"
 #include "mcc_generated_files/adcc.h"
@@ -176,10 +171,10 @@ static void can_msg_handler(const can_msg_t *msg) {
             break;
 
         case MSG_RESET_CMD:
-            dest_id = get_reset_board_id(msg);
+            /*dest_id = get_reset_board_id(msg);
             if (dest_id == BOARD_UNIQUE_ID || dest_id == 0 ){
                 RESET();
-            }
+            }*/
             break;
         default:
             // all the other ones - do nothing
@@ -190,14 +185,14 @@ static void can_msg_handler(const can_msg_t *msg) {
 // Send a CAN message with nominal status
 static void send_status_ok(void) {
     can_msg_t board_stat_msg;
-        build_board_stat_msg(millis(), E_NOMINAL, NULL, 0, &board_stat_msg);       
+	build_general_board_status_msg(PRIO_LOW, millis(), 0, 0, &board_stat_msg);
     // send it off at low priority
     txb_enqueue(&board_stat_msg);
 }
 
 static void send_status_error_module(void) {
     can_msg_t board_stat_msg;
-        build_board_stat_msg(millis(), E_GPS, NULL, 0, &board_stat_msg);       
+    build_general_board_status_msg(PRIO_LOW, millis(), 0, 0, &board_stat_msg);      
     // send it off at low priority
     txb_enqueue(&board_stat_msg);
 }

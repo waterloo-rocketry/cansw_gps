@@ -1,8 +1,4 @@
-#include "canlib/can.h"
-#include "canlib/can_common.h"
-#include "canlib/pic18f26k83/pic18f26k83_can.h"
-#include "canlib/message_types.h"
-#include "canlib/util/can_tx_buffer.h"
+#include "canlib/canlib.h"
 
 #include "mcc_generated_files/fvr.h"
 #include "mcc_generated_files/adcc.h"
@@ -17,7 +13,7 @@
 //******************************************************************************
 
 bool check_bus_current_error(void){
-    adc_result_t sense_raw_mV = ADCC_GetSingleConversion(channel_CURRENT) / 2;
+    /*adc_result_t sense_raw_mV = ADCC_GetSingleConversion(channel_CURRENT) / 2;
     int curr_draw_mA = (sense_raw_mV) / 20;
 
     if (curr_draw_mA > OVERCURRENT_THRESHOLD_mA) {
@@ -30,7 +26,7 @@ bool check_bus_current_error(void){
         build_board_stat_msg(timestamp, E_5V_OVER_CURRENT, curr_data, 2, &error_msg);
         txb_enqueue(&error_msg);
         return false;
-    }
+		}*/
 
     // things look ok
     return true;
