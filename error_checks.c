@@ -1,10 +1,10 @@
 #include "canlib/canlib.h"
 
-#include "mcc_generated_files/fvr.h"
 #include "mcc_generated_files/adcc.h"
+#include "mcc_generated_files/fvr.h"
 
-#include "timer.h"
 #include "error_checks.h"
+#include "timer.h"
 
 #include <stdlib.h>
 
@@ -12,22 +12,17 @@
 //                              STATUS CHECKS                                 //
 //******************************************************************************
 
-bool check_bus_current_error(void){
-    /*adc_result_t sense_raw_mV = ADCC_GetSingleConversion(channel_CURRENT) / 2;
+bool check_5v_current_error(void) {
+    adc_result_t sense_raw_mV = ADCC_GetSingleConversion(channel_CURRENT) / 2;
     int curr_draw_mA = (sense_raw_mV) / 20;
 
+    can_msg_t msg;
+    build_analog_data_msg(PRIO_LOW, millis(), SENSOR_5V_CURR, curr_draw_mA, &msg);
+    txb_enqueue(&msg);
+
     if (curr_draw_mA > OVERCURRENT_THRESHOLD_mA) {
-        uint32_t timestamp = millis();
-        uint8_t curr_data[2] = {0};
-        curr_data[0] = (curr_draw_mA >> 8) & 0xff;
-        curr_data[1] = (curr_draw_mA >> 0) & 0xff;
+        return true;
+    }
 
-        can_msg_t error_msg;
-        build_board_stat_msg(timestamp, E_5V_OVER_CURRENT, curr_data, 2, &error_msg);
-        txb_enqueue(&error_msg);
-        return false;
-		}*/
-
-    // things look ok
-    return true;
+    return false;
 }
