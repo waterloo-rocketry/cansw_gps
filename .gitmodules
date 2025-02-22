@@ -2,3 +2,6 @@
 	path = canlib
 	url = https://github.com/waterloo-rocketry/canlib.git
 	branch = master
+[submodule "rocketlib"]
+	path = rocketlib
+	url = https://github.com/waterloo-rocketry/rocketlib.git
