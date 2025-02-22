@@ -1,7 +1,6 @@
-#include "gps_general.h"
-
-#include <stdbool.h>
 #include <xc.h>
+
+#include "gps_general.h"
 
 void uart_init(void) {
     // Set Baud Rate Generator to generate baud rate of 9600
@@ -14,24 +13,24 @@ void uart_init(void) {
     U1BRGH = 0x4;
     U1BRGL = 0xE1;
 
-    //Set RX1 to PORT C7
+    // Set RX1 to PORT C7
     U1RXPPS = 0b010111;
 
-    //Set the ON bit
-    // Bit7=ON, Bit3 = RXBIMD(Receive Break Interrupt Mode Select bit)
+    // Set the ON bit
+    //  Bit7=ON, Bit3 = RXBIMD(Receive Break Interrupt Mode Select bit)
     U1CON1 = 0b10001000;
     //  Run on overflow
     U1CON2bits.RUNOVF = 1;
-    //Set U1TXIE to enable interrupt
+    // Set U1TXIE to enable interrupt
     PIE3bits.U1RXIE = 1;
-    //Enable reception by setting RXEN
+    // Enable reception by setting RXEN
     U1CON0bits.RXEN = 1;
-    //Configure RX pin at C7
+    // Configure RX pin at C7
     LATC7 = 1;
     ANSELC7 = 0;
 
     U1ERRIRbits.U1FERIF = 0;
-    //End of UART connection setup
+    // End of UART connection setup
 }
 
 void led_init(void) {
@@ -43,8 +42,9 @@ void led_init(void) {
 }
 
 void led_1_heartbeat(void) {
-    if(LATB1)
+    if (LATB1) {
         LED_1_OFF();
-    else
+    } else {
         LED_1_ON();
+    }
 }

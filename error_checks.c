@@ -1,12 +1,10 @@
-#include "canlib/canlib.h"
+#include "canlib.h"
+#include "timer.h"
 
 #include "mcc_generated_files/adcc.h"
 #include "mcc_generated_files/fvr.h"
 
 #include "error_checks.h"
-#include "timer.h"
-
-#include <stdlib.h>
 
 //******************************************************************************
 //                              STATUS CHECKS                                 //

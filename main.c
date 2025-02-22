@@ -1,4 +1,9 @@
-#include "canlib/canlib.h"
+#include <stdlib.h>
+
+#include <xc.h>
+
+#include "canlib.h"
+#include "timer.h"
 
 #include "mcc_generated_files/adcc.h"
 #include "mcc_generated_files/fvr.h"
@@ -7,10 +12,6 @@
 #include "error_checks.h"
 #include "gps_general.h"
 #include "gps_module.h"
-#include "timer.h"
-
-#include <stdlib.h>
-#include <xc.h>
 
 // Memory pool for CAN transmit buffer
 uint8_t tx_pool[500];
