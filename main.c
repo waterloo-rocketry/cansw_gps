@@ -115,6 +115,7 @@ int main(void) {
             led_1_heartbeat();
             last_millis = millis();
         }
+        for (int i = 0; i < 1000; i++) {} // FIXME workaround to prevent sending message to fast
         txb_heartbeat();
     }
 
