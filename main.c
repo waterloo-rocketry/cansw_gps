@@ -103,7 +103,7 @@ int main(void) {
         if (millis() - last_millis > MAX_LOOP_TIME_DIFF_ms) {
             uint32_t general_error_bitfield = 0;
             if (check_5v_current_error()) {
-                general_error_bitfield |= E_5V_OVER_CURRENT;
+                general_error_bitfield |= (1 << E_5V_OVER_CURRENT_OFFSET);
             }
 
             can_msg_t board_stat_msg;
@@ -172,14 +172,8 @@ static void can_msg_handler(const can_msg_t *msg) {
             break;
 
         case MSG_RESET_CMD:
-            uint8_t board_type_id, board_inst_id;
-            get_reset_board_id(msg, &board_type_id, &board_inst_id);
-            if (board_type_id == 0) {
+            if (check_board_need_reset(msg)) {
                 RESET();
-            } else if (board_type_id == BOARD_TYPE_UNIQUE_ID) {
-                if ((board_inst_id == 0) || (board_inst_id == BOARD_INST_UNIQUE_ID)) {
-                    RESET();
-                }
             }
             break;
 
