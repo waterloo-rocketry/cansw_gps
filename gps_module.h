@@ -10,4 +10,3 @@ void assemble_can_msgs(void);
 void gps_handle_byte(uint8_t byte);
 
 #endif /* GPS_H */
-
