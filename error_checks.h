@@ -1,7 +1,5 @@
 #ifndef ERROR_CHECKS_H
-#define	ERROR_CHECKS_H
-
-#include "canlib/message_types.h"
+#define ERROR_CHECKS_H
 
 #include <stdbool.h>
 
@@ -9,7 +7,6 @@
 #define OVERCURRENT_THRESHOLD_mA 100
 
 // General board status checkers
-bool check_bus_current_error(void);
+bool check_5v_current_error(void);
 
-#endif	/* ERROR_CHECKS_H */
-
+#endif /* ERROR_CHECKS_H */

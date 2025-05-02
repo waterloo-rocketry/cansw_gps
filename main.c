@@ -1,34 +1,28 @@
-#include "canlib/can.h"
-#include "canlib/can_common.h"
-#include "canlib/pic18f26k83/pic18f26k83_can.h"
-#include "canlib/message_types.h"
-#include "canlib/util/timing_util.h"
-#include "canlib/util/can_tx_buffer.h"
-
-#include "mcc_generated_files/fvr.h"
-#include "mcc_generated_files/adcc.h"
-
-#include "config.h"
-#include "timer.h"
-#include "gps_module.h"
-#include "gps_general.h"
-#include "error_checks.h"
+#include <stdlib.h>
 
 #include <xc.h>
-#include <stdlib.h>
+
+#include "canlib.h"
+#include "timer.h"
+
+#include "mcc_generated_files/adcc.h"
+#include "mcc_generated_files/fvr.h"
+
+#include "config.h"
+#include "error_checks.h"
+#include "gps_general.h"
+#include "gps_module.h"
 
 // Memory pool for CAN transmit buffer
 uint8_t tx_pool[500];
 static void can_msg_handler(const can_msg_t *msg);
 
 static void send_status_ok(void);
-static void send_status_error_module(void);
 
 static volatile bool recieved_first_message = false;
 static volatile bool seen_can_message = false;
 
 int main(void) {
-
     // Set frequency to be 48 MHZ
     OSCFRQbits.FRQ = 0b0111;
 
@@ -53,15 +47,8 @@ int main(void) {
     CANRXPPS = 0x11;
 
     // set up CAN module
-    can_timing_t can_setup = {
-        .brp      =  7,
-        .sjw      =  3,
-        .btlmode  =  1,
-        .sam      =  0,
-        .seg1ph   =  4,
-        .prseg    =  0,
-        .seg2ph   =  4
-    };
+    can_timing_t can_setup;
+    can_generate_timing_params(_XTAL_FREQ, &can_setup);
     can_init(&can_setup, can_msg_handler);
     txb_init(tx_pool, sizeof(tx_pool), can_send, can_send_rdy);
 
@@ -74,17 +61,17 @@ int main(void) {
     // Wait for the first message
     while (!recieved_first_message) {
         CLRWDT(); // feed the watchdog, which is set for 256ms
-        
+
         if (seen_can_message) {
             seen_can_message = false;
             last_message_millis = millis();
         }
-        
+
         if (millis() - last_message_millis > MAX_BUS_DEAD_TIME_ms) {
             // We've got too long without seeing a valid CAN message (including one of ours)
             RESET();
         }
-        
+
         if (millis() - last_millis > 5000) {
             // Haven't received anything, try resetting the gps
             LATC2 = 0;
@@ -92,33 +79,43 @@ int main(void) {
             LATC2 = 1;
             __delay_ms(100);
 
-            send_status_error_module();
+            can_msg_t board_stat_msg;
+            build_general_board_status_msg(PRIO_LOW, millis(), 0, 1, &board_stat_msg);
+            txb_enqueue(&board_stat_msg);
+
             last_millis = millis();
         }
     }
 
-    while(1) {
+    while (1) {
         CLRWDT(); // feed the watchdog, which is set for 256ms
-        
+
         if (seen_can_message) {
             seen_can_message = false;
             last_message_millis = millis();
         }
-        
+
         if (millis() - last_message_millis > MAX_BUS_DEAD_TIME_ms) {
             // We've got too long without seeing a valid CAN message (including one of ours)
             RESET();
         }
-        
+
         if (millis() - last_millis > MAX_LOOP_TIME_DIFF_ms) {
-            bool status_ok = check_bus_current_error();
-            if (status_ok) {
-                send_status_ok();
+            uint32_t general_error_bitfield = 0;
+            if (check_5v_current_error()) {
+                general_error_bitfield |= (1 << E_5V_OVER_CURRENT_OFFSET);
             }
+
+            can_msg_t board_stat_msg;
+            build_general_board_status_msg(
+                PRIO_LOW, millis(), general_error_bitfield, 0, &board_stat_msg
+            );
+            txb_enqueue(&board_stat_msg);
 
             led_1_heartbeat();
             last_millis = millis();
         }
+        for (int i = 0; i < 1000; i++) {} // FIXME workaround to prevent sending message to fast
         txb_heartbeat();
     }
 
@@ -160,7 +157,7 @@ static void __interrupt() interrupt_handler() {
 // This is called from within can_handle_interrupt()
 static void can_msg_handler(const can_msg_t *msg) {
     seen_can_message = true;
-    
+
     uint16_t msg_type = get_message_type(msg);
     int dest_id = -1;
 
@@ -176,28 +173,13 @@ static void can_msg_handler(const can_msg_t *msg) {
             break;
 
         case MSG_RESET_CMD:
-            dest_id = get_reset_board_id(msg);
-            if (dest_id == BOARD_UNIQUE_ID || dest_id == 0 ){
+            if (check_board_need_reset(msg)) {
                 RESET();
             }
             break;
+
         default:
             // all the other ones - do nothing
             break;
     }
-}
-
-// Send a CAN message with nominal status
-static void send_status_ok(void) {
-    can_msg_t board_stat_msg;
-        build_board_stat_msg(millis(), E_NOMINAL, NULL, 0, &board_stat_msg);       
-    // send it off at low priority
-    txb_enqueue(&board_stat_msg);
-}
-
-static void send_status_error_module(void) {
-    can_msg_t board_stat_msg;
-        build_board_stat_msg(millis(), E_GPS, NULL, 0, &board_stat_msg);       
-    // send it off at low priority
-    txb_enqueue(&board_stat_msg);
 }

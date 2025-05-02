@@ -1,19 +1,9 @@
-/* 
- * File:   config.h
- * Author: Aidan.Ha@ibm.com
- *
- * Created on May 14, 2019, 10:42 PM
- */
-
 #ifndef CONFIG_H
-#define	CONFIG_H
+#define CONFIG_H
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
 // PIC18F26K83 Configuration Bit Settings
 
-// 'C' source line config statements
+// clang-format off
 
 // CONFIG1L
 #pragma config FEXTOSC = OFF    // Use internal oscillator
@@ -67,19 +57,11 @@ extern "C" {
 
 // CONFIG5H
 
+// clang-format on
+
 // #pragma config statements should precede project file includes.
 // Use project enums instead of #define for ON and OFF.
 
 #include <xc.h>
 
-
-
-
-
-
-#ifdef	__cplusplus
-}
-#endif
-
-#endif	/* CONFIG_H */
-
+#endif /* CONFIG_H */

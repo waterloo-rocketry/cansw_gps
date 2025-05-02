@@ -1,37 +1,26 @@
-#include "canlib/can.h"
-#include "canlib/can_common.h"
-#include "canlib/pic18f26k83/pic18f26k83_can.h"
-#include "canlib/message_types.h"
-#include "canlib/util/can_tx_buffer.h"
-
-#include "mcc_generated_files/fvr.h"
-#include "mcc_generated_files/adcc.h"
-
+#include "canlib.h"
 #include "timer.h"
-#include "error_checks.h"
 
-#include <stdlib.h>
+#include "mcc_generated_files/adcc.h"
+#include "mcc_generated_files/fvr.h"
+
+#include "error_checks.h"
 
 //******************************************************************************
 //                              STATUS CHECKS                                 //
 //******************************************************************************
 
-bool check_bus_current_error(void){
+bool check_5v_current_error(void) {
     adc_result_t sense_raw_mV = ADCC_GetSingleConversion(channel_CURRENT) / 2;
     int curr_draw_mA = (sense_raw_mV) / 20;
 
-    if (curr_draw_mA > OVERCURRENT_THRESHOLD_mA) {
-        uint32_t timestamp = millis();
-        uint8_t curr_data[2] = {0};
-        curr_data[0] = (curr_draw_mA >> 8) & 0xff;
-        curr_data[1] = (curr_draw_mA >> 0) & 0xff;
+    can_msg_t msg;
+    build_analog_data_msg(PRIO_LOW, millis(), SENSOR_5V_CURR, curr_draw_mA, &msg);
+    txb_enqueue(&msg);
 
-        can_msg_t error_msg;
-        build_board_stat_msg(timestamp, E_5V_OVER_CURRENT, curr_data, 2, &error_msg);
-        txb_enqueue(&error_msg);
-        return false;
+    if (curr_draw_mA > OVERCURRENT_THRESHOLD_mA) {
+        return true;
     }
 
-    // things look ok
-    return true;
+    return false;
 }
