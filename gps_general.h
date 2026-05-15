@@ -5,10 +5,10 @@
 #define MAX_LOOP_TIME_DIFF_ms 500
 #define MAX_BUS_DEAD_TIME_ms 1000
 
-#define LED_1_ON() (LATB1 = 1)
-#define LED_1_OFF() (LATB1 = 0)
-#define LED_2_ON() (LATB2 = 1)
-#define LED_2_OFF() (LATB2 = 0)
+#define LED_1_ON() (LATC0 = 1)
+#define LED_1_OFF() (LATC0 = 0)
+#define LED_2_ON() (LATC1 = 1)
+#define LED_2_OFF() (LATC1 = 0)
 
 void uart_init(void);
 

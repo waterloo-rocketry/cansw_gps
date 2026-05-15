@@ -38,13 +38,13 @@ int main(void) {
     timer0_init();
 
     // Set up CAN TX
-    TRISC0 = 0;
-    RC0PPS = 0x33;
+    TRISB5 = 0;
+    RB5PPS = 0x33;
 
     // Set up CAN RX
-    TRISC1 = 1;
-    ANSELC1 = 0;
-    CANRXPPS = 0x11;
+    TRISB4 = 1;
+    ANSELB4 = 0;
+    CANRXPPS = 0x0C;
 
     // set up CAN module
     can_timing_t can_setup;

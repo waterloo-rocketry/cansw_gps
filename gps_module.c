@@ -59,14 +59,14 @@ static struct {
 } parser;
 
 void gps_init(void) {
-    // Set port C2 as output pin (~HWR)
-    TRISC2 = 0;
+    // Set port C5 as output pin (~HWR)
+    TRISC5 = 0;
 
-    // Set C2 to high because it's active low
-    LATC2 = 1;
+    // Set C5 to high because it's active low
+    LATC5 = 1;
 
-    // Set C3 to input (FIX)
-    TRISC3 = 1;
+    // Set A5 to input (FIX)
+    TRISA5 = 1;
 
     // Set C4 to input (PPS)
     TRISC4 = 1;
