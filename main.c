@@ -49,8 +49,8 @@ int main(void) {
     // set up CAN module
     can_timing_t can_setup;
     can_generate_timing_params(_XTAL_FREQ, &can_setup);
-    can_init(&can_setup, can_msg_handler);
-    txb_init(tx_pool, sizeof(tx_pool), can_send, can_send_rdy);
+    pic18f26k83_can_init(&can_setup, can_msg_handler);
+    txb_init(tx_pool, sizeof(tx_pool), pic18f26k83_can_send, pic18f26k83_can_send_rdy);
 
     uint32_t last_millis = millis();
     uint32_t last_message_millis = millis();
@@ -125,7 +125,7 @@ int main(void) {
 static void __interrupt() interrupt_handler() {
     if (PIR5) {
         // Handle CAN
-        can_handle_interrupt();
+        pic18f26k83_can_handle_interrupt();
     }
 
     // UART message
