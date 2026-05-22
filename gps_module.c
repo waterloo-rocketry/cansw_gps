@@ -183,7 +183,7 @@ void enqueue_can_msgs_alt(uint32_t timestamp) {
     // message format: just a normal decimal number, we divide decimal part by 100 to make it fit
     // within a byte
     build_gps_alt_msg(
-        PRIO_HIGH, millis(), (uint16_t)alt, (uint8_t)(dalt / 100), parser.alt.dir, &msg_alt
+        PRIO_HIGH, millis(), (uint16_t)alt, (uint8_t)(dalt / 100), &msg_alt
     );
     txb_enqueue(&msg_alt);
 }

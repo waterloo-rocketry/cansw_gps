@@ -80,7 +80,7 @@ int main(void) {
             __delay_ms(100);
 
             can_msg_t board_stat_msg;
-            build_general_board_status_msg(PRIO_LOW, millis(), 0, 1, &board_stat_msg);
+            build_general_board_status_msg(PRIO_LOW, millis(), 0, &board_stat_msg);
             txb_enqueue(&board_stat_msg);
 
             last_millis = millis();
@@ -108,7 +108,7 @@ int main(void) {
 
             can_msg_t board_stat_msg;
             build_general_board_status_msg(
-                PRIO_LOW, millis(), general_error_bitfield, 0, &board_stat_msg
+                PRIO_LOW, millis(), general_error_bitfield, &board_stat_msg
             );
             txb_enqueue(&board_stat_msg);
 
@@ -173,7 +173,8 @@ static void can_msg_handler(const can_msg_t *msg) {
             break;
 
         case MSG_RESET_CMD:
-            if (check_board_need_reset(msg)) {
+            bool need_reset = false;
+            if ((W_SUCCESS == check_board_need_reset(msg, &need_reset)) && (!need_reset)) {
                 RESET();
             }
             break;
