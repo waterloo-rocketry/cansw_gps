@@ -9,12 +9,16 @@ void uart_init(void) {
     U1CON0bits.BRGS = 1;
     U1CON0bits.MODE = 0;
 
-    // _XTAL_FREQ / 9600 / 16 - 1
+    _XTAL_FREQ / 9600 / 16 - 1
     U1BRGH = 0x4;
     U1BRGL = 0xE1;
 
-    // Set RX1 to PORT C2
-    U1RXPPS = 0b010010;
+    // // this is the 38400 baud rate that is presnet on GPS Board 1
+    // U1BRGH = 0x1;
+    // U1BRGL = 0x38;
+
+    // Set RX1 to PORT C3
+    U1RXPPS = 0b010011;
 
     // Set the ON bit
     //  Bit7=ON, Bit3 = RXBIMD(Receive Break Interrupt Mode Select bit)
@@ -25,9 +29,10 @@ void uart_init(void) {
     PIE3bits.U1RXIE = 1;
     // Enable reception by setting RXEN
     U1CON0bits.RXEN = 1;
-    // Configure RX pin at C2
-    LATC2 = 1;
-    ANSELC2 = 0;
+    // Configure RX pin at C3
+    LATC3 = 1;
+    ANSELC3 = 0;
+    TRISC3 = 1;
 
     U1ERRIRbits.U1FERIF = 0;
     // End of UART connection setup

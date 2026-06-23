@@ -3,7 +3,7 @@
 
 #define _XTAL_FREQ 48000000
 #define MAX_LOOP_TIME_DIFF_ms 500
-#define MAX_BUS_DEAD_TIME_ms 1000
+#define MAX_BUS_DEAD_TIME_ms 10000
 
 #define LED_1_ON() (LATC0 = 1)
 #define LED_1_OFF() (LATC0 = 0)

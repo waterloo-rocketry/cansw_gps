@@ -74,13 +74,13 @@ int main(void) {
 
         if (millis() - last_millis > 5000) {
             // Haven't received anything, try resetting the gps
-            LATC2 = 0;
+            LATC5 = 0;
             __delay_ms(100);
-            LATC2 = 1;
+            LATC5 = 1;
             __delay_ms(100);
 
             can_msg_t board_stat_msg;
-            build_general_board_status_msg(PRIO_LOW, millis(), 0, &board_stat_msg);
+            build_general_board_status_msg(PRIO_LOW, millis(), (1 << E_IO_ERROR_OFFSET), &board_stat_msg);
             txb_enqueue(&board_stat_msg);
 
             last_millis = millis();
