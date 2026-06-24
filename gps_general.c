@@ -9,7 +9,7 @@ void uart_init(void) {
     U1CON0bits.BRGS = 1;
     U1CON0bits.MODE = 0;
 
-    _XTAL_FREQ / 9600 / 16 - 1
+    // _XTAL_FREQ / 9600 / 16 - 1
     U1BRGH = 0x4;
     U1BRGL = 0xE1;
 
