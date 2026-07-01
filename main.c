@@ -38,19 +38,19 @@ int main(void) {
     timer0_init();
 
     // Set up CAN TX
-    TRISC0 = 0;
-    RC0PPS = 0x33;
+    TRISB5 = 0;
+    RB5PPS = 0x33;
 
     // Set up CAN RX
-    TRISC1 = 1;
-    ANSELC1 = 0;
-    CANRXPPS = 0x11;
+    TRISB4 = 1;
+    ANSELB4 = 0;
+    CANRXPPS = 0x0C;
 
     // set up CAN module
     can_timing_t can_setup;
     can_generate_timing_params(_XTAL_FREQ, &can_setup);
-    can_init(&can_setup, can_msg_handler);
-    txb_init(tx_pool, sizeof(tx_pool), can_send, can_send_rdy);
+    pic18f26k83_can_init(&can_setup, can_msg_handler);
+    txb_init(tx_pool, sizeof(tx_pool), pic18f26k83_can_send, pic18f26k83_can_send_rdy);
 
     uint32_t last_millis = millis();
     uint32_t last_message_millis = millis();
@@ -74,13 +74,13 @@ int main(void) {
 
         if (millis() - last_millis > 5000) {
             // Haven't received anything, try resetting the gps
-            LATC2 = 0;
+            LATC5 = 0;
             __delay_ms(100);
-            LATC2 = 1;
+            LATC5 = 1;
             __delay_ms(100);
 
             can_msg_t board_stat_msg;
-            build_general_board_status_msg(PRIO_LOW, millis(), 0, 1, &board_stat_msg);
+            build_general_board_status_msg(PRIO_LOW, millis(), (1 << E_IO_ERROR_OFFSET), &board_stat_msg);
             txb_enqueue(&board_stat_msg);
 
             last_millis = millis();
@@ -108,7 +108,7 @@ int main(void) {
 
             can_msg_t board_stat_msg;
             build_general_board_status_msg(
-                PRIO_LOW, millis(), general_error_bitfield, 0, &board_stat_msg
+                PRIO_LOW, millis(), general_error_bitfield, &board_stat_msg
             );
             txb_enqueue(&board_stat_msg);
 
@@ -125,7 +125,7 @@ int main(void) {
 static void __interrupt() interrupt_handler() {
     if (PIR5) {
         // Handle CAN
-        can_handle_interrupt();
+        pic18f26k83_can_handle_interrupt();
     }
 
     // UART message
@@ -173,7 +173,8 @@ static void can_msg_handler(const can_msg_t *msg) {
             break;
 
         case MSG_RESET_CMD:
-            if (check_board_need_reset(msg)) {
+            bool need_reset = false;
+            if ((W_SUCCESS == check_board_need_reset(msg, &need_reset)) && (!need_reset)) {
                 RESET();
             }
             break;

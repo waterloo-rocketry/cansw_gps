@@ -13,8 +13,8 @@ void uart_init(void) {
     U1BRGH = 0x4;
     U1BRGL = 0xE1;
 
-    // Set RX1 to PORT C7
-    U1RXPPS = 0b010111;
+    // Set RX1 to PORT C3
+    U1RXPPS = 0b010011;
 
     // Set the ON bit
     //  Bit7=ON, Bit3 = RXBIMD(Receive Break Interrupt Mode Select bit)
@@ -25,24 +25,25 @@ void uart_init(void) {
     PIE3bits.U1RXIE = 1;
     // Enable reception by setting RXEN
     U1CON0bits.RXEN = 1;
-    // Configure RX pin at C7
-    LATC7 = 1;
-    ANSELC7 = 0;
+    // Configure RX pin at C3
+    LATC3 = 1;
+    ANSELC3 = 0;
+    TRISC3 = 1;
 
     U1ERRIRbits.U1FERIF = 0;
     // End of UART connection setup
 }
 
 void led_init(void) {
-    TRISB1 = 0;
+    TRISC0 = 0;
     LED_1_OFF();
 
-    TRISB2 = 0;
+    TRISC1 = 0;
     LED_2_OFF();
 }
 
 void led_1_heartbeat(void) {
-    if (LATB1) {
+    if (LATC0) {
         LED_1_OFF();
     } else {
         LED_1_ON();
