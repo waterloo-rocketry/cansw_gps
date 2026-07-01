@@ -13,10 +13,6 @@ void uart_init(void) {
     U1BRGH = 0x4;
     U1BRGL = 0xE1;
 
-    // // this is the 38400 baud rate that is presnet on GPS Board 1
-    // U1BRGH = 0x1;
-    // U1BRGL = 0x38;
-
     // Set RX1 to PORT C3
     U1RXPPS = 0b010011;
 
