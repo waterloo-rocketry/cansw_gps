@@ -174,7 +174,7 @@ static void can_msg_handler(const can_msg_t *msg) {
 
         case MSG_RESET_CMD:
             bool need_reset = false;
-            if ((W_SUCCESS == check_board_need_reset(msg, &need_reset)) && (!need_reset)) {
+            if ((W_SUCCESS == check_board_need_reset(msg, &need_reset)) && (need_reset)) {
                 RESET();
             }
             break;
