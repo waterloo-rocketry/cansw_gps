@@ -1,9 +1,4 @@
-#include "canlib/can.h"
-#include "canlib/can_common.h"
-#include "canlib/pic18f26k83/pic18f26k83_can.h"
-#include "canlib/message_types.h"
-#include "canlib/util/timing_util.h"
-#include "canlib/util/can_tx_buffer.h"
+#include "canlib.h"
 
 #include "mcc_generated_files/fvr.h"
 #include "mcc_generated_files/adcc.h"
@@ -62,8 +57,8 @@ int main(void) {
         .prseg    =  0,
         .seg2ph   =  4
     };
-    can_init(&can_setup, can_msg_handler);
-    txb_init(tx_pool, sizeof(tx_pool), can_send, can_send_rdy);
+    pic18f26k83_can_init(&can_setup, can_msg_handler);
+    txb_init(tx_pool, sizeof(tx_pool), pic18f26k83_can_send, pic18f26k83_can_send_rdy);
 
     uint32_t last_millis = millis();
     uint32_t last_message_millis = millis();
@@ -128,7 +123,7 @@ int main(void) {
 static void __interrupt() interrupt_handler() {
     if (PIR5) {
         // Handle CAN
-        can_handle_interrupt();
+        pic18f26k83_can_handle_interrupt();
     }
 
     // UART message
@@ -175,12 +170,14 @@ static void can_msg_handler(const can_msg_t *msg) {
             LED_2_OFF();
             break;
 
-        case MSG_RESET_CMD:
-            dest_id = get_reset_board_id(msg);
-            if (dest_id == BOARD_UNIQUE_ID || dest_id == 0 ){
+        case MSG_RESET_CMD: {
+            bool needsareset = true;
+            check_board_need_reset(msg,&needsareset);
+            if (needsareset) {
                 RESET();
             }
             break;
+        }
         default:
             // all the other ones - do nothing
             break;
