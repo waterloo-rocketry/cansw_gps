@@ -103,7 +103,7 @@ int main(void) {
         if (millis() - last_millis > MAX_LOOP_TIME_DIFF_ms) {
             uint32_t general_error_bitfield = 0;
             if (check_5v_current_error()) {
-                general_error_bitfield |= (1 << E_5V_OVER_CURRENT_OFFSET);
+                general_error_bitfield |= (1 << E_5V_OVER_CURR_OFFSET);
             }
 
             can_msg_t board_stat_msg;
